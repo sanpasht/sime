@@ -58,7 +58,7 @@ cmake --build build --parallel
 ## Architecture
 
 ```
-VoxelBuilder/
+SIME/
 ├── CMakeLists.txt
 └── Source/
     ├── Main.cpp            – JUCE app entry point
