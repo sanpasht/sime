@@ -1,4 +1,4 @@
-# Voxel Builder
+# SIME SPATIAL
 
 A 3-D voxel construction tool built with JUCE + OpenGL 3.3.
 
