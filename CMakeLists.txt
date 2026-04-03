@@ -20,11 +20,23 @@ target_sources(SIME PRIVATE
     Source/Camera.cpp
     Source/Raycaster.cpp
     Source/Renderer.cpp
+    Source/Audio/AudioClip.cpp
+    Source/Audio/SampleLibrary.cpp
+    Source/Audio/VoicePool.cpp
+    Source/Audio/DeviceManagerWrapper.cpp
+    Source/Audio/AudioEngine.cpp
+    Source/Audio/Mixer.cpp
+    Source/Audio/Scheduler.cpp
+    Source/Audio/SoundScene.cpp
+    Source/Audio/Spatializer.cpp
 )
 
 target_compile_definitions(SIME PRIVATE
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
+    JUCE_USE_OGGVORBIS=0
+    JUCE_USE_FLAC=0
+    JUCE_USE_MP3AUDIOFORMAT=0
     JUCE_APPLICATION_NAME_STRING="$<TARGET_PROPERTY:SIME,JUCE_PRODUCT_NAME>"
     JUCE_APPLICATION_VERSION_STRING="$<TARGET_PROPERTY:SIME,JUCE_VERSION>"
 )
@@ -36,6 +48,10 @@ target_link_libraries(SIME PRIVATE
     juce::juce_graphics
     juce::juce_gui_basics
     juce::juce_opengl
+    juce::juce_audio_basics
+    juce::juce_audio_devices
+    juce::juce_audio_formats
+    juce::juce_audio_utils
 )
 
 juce_generate_juce_header(SIME)

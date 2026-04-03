@@ -3,6 +3,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 #include "MainComponent.h"
+#include "Audio/AudioConfig.h"
 #include <juce_opengl/juce_opengl.h>
 using namespace juce::gl;
 #include <algorithm>
@@ -20,10 +21,13 @@ MainComponent::MainComponent()
     openGLContext.setRenderer(this);
     openGLContext.attachTo(*this);
     openGLContext.setContinuousRepainting(true);
+
+    audioEngine.initialise();
 }
 
 MainComponent::~MainComponent()
 {
+    audioEngine.shutdown();
     openGLContext.detach();
 }
 
@@ -77,6 +81,7 @@ void MainComponent::renderOpenGL()
     {
         voxelGrid.clear();
         blockList.clear();
+        soundScene.clear();
         renderer.meshDirty = true;
         juce::ScopedLock lk(blockListMutex);
         blockListUI.clear();
@@ -102,6 +107,7 @@ void MainComponent::renderOpenGL()
             if (op.type == VoxelOp::REMOVE)
             {
                 voxelGrid.remove(op.pos);
+                removeSoundBlockAt(op.pos);
                 auto it = std::find_if(blockList.begin(), blockList.end(),
                     [&](const BlockEntry& e){ return e.pos == op.pos; });
                 if (it != blockList.end()) blockList.erase(it);
@@ -199,6 +205,11 @@ void MainComponent::renderOpenGL()
             blockList.push_back({ nextSerial++, placePos });
             lastPlacedPos = placePos;
             renderer.meshDirty = true;
+
+            createSoundBlockAt(Vec3f(static_cast<float>(placePos.x) + 0.5f,
+                                     static_cast<float>(placePos.y) + 0.5f,
+                                     static_cast<float>(placePos.z) + 0.5f));
+
             juce::ScopedLock lk(blockListMutex);
             blockListUI = blockList;
         }
@@ -217,6 +228,7 @@ void MainComponent::renderOpenGL()
         if (hit.hit)
         {
             voxelGrid.remove(hit.voxelPos);
+            removeSoundBlockAt(hit.voxelPos);
             auto it = std::find_if(blockList.begin(), blockList.end(),
                 [&](const BlockEntry& e){ return e.pos == hit.voxelPos; });
             if (it != blockList.end()) blockList.erase(it);
@@ -344,13 +356,40 @@ void MainComponent::renderOpenGL()
         info += "  Pos: (" + juce::String(pos.x, 1) + ","
                            + juce::String(pos.y, 1) + ","
                            + juce::String(pos.z, 1) + ")";
+        bool isPlaying = audioEngine.getTransport().isPlaying();
+        double tTime   = audioEngine.getTransport().getCurrentTime();
+        int voices     = audioEngine.getStatus().activeVoices.load(std::memory_order_relaxed);
+        float peakL    = audioEngine.getStatus().peakLevelL.load(std::memory_order_relaxed);
+        float peakR    = audioEngine.getStatus().peakLevelR.load(std::memory_order_relaxed);
+        float peakMax  = std::max(peakL, peakR);
+        int soundBlocks = soundScene.getBlockCount();
+
+        info += "  [" + juce::String(isPlaying ? "PLAY" : "STOP") + " "
+              + juce::String(tTime, 1) + "s V:" + juce::String(voices)
+              + " B:" + juce::String(soundBlocks)
+              + " dB:" + juce::String(peakMax > 0.0001f ? 20.0f * std::log10(peakMax) : -60.0f, 1) + "]";
+
         if (shiftHeld)
             info += "  SHIFT PLANE Y=" + juce::String(shiftPlaneY)
                   + "  (scroll to raise/lower)";
         else
-            info += "  LMB=Place  RMB=Look/Remove  WASD=Move  Shift=AirPlace  C=Clear";
+            info += "  WASD E/Q Space=Play T=Stop L=LoadWAV";
         juce::ScopedLock lock(hud.lock);
         hud.text = info;
+    }
+
+    // Push audio scene snapshot every frame
+    {
+        Vec3f lPos = camera.getPosition();
+        Vec3f lFwd = camera.getForward();
+        Vec3f lRgt = camera.getRight();
+        double tTime = audioEngine.getTransport().getCurrentTime();
+        bool playing = audioEngine.getTransport().isPlaying();
+
+        SceneSnapshot snap = soundScene.buildSnapshot(
+            lPos, lFwd, lRgt, tTime, playing,
+            audioEngine.getSampleLibrary());
+        audioEngine.pushSnapshot(snap);
     }
 }
 
@@ -367,8 +406,8 @@ void MainComponent::processKeyboardMovement(float dt)
     if (KP::isKeyCurrentlyDown('s') || KP::isKeyCurrentlyDown('S')) camera.moveForward(-spd);
     if (KP::isKeyCurrentlyDown('a') || KP::isKeyCurrentlyDown('A')) camera.moveRight  (-spd);
     if (KP::isKeyCurrentlyDown('d') || KP::isKeyCurrentlyDown('D')) camera.moveRight  ( spd);
-    if (KP::isKeyCurrentlyDown(KP::spaceKey))                       camera.moveUp     ( spd);
-    if (juce::ModifierKeys::currentModifiers.isCtrlDown())          camera.moveUp     (-spd);
+    if (KP::isKeyCurrentlyDown('e') || KP::isKeyCurrentlyDown('E')) camera.moveUp     ( spd);
+    if (KP::isKeyCurrentlyDown('q') || KP::isKeyCurrentlyDown('Q')) camera.moveUp     (-spd);
 
     if (juce::ModifierKeys::currentModifiers.isAltDown())
     {
@@ -641,7 +680,91 @@ bool MainComponent::keyPressed(const juce::KeyPress& k)
         return true;
     }
 
+    // Space – toggle transport play/pause
+    if (k.getKeyCode() == juce::KeyPress::spaceKey)
+    {
+        auto& t = audioEngine.getTransport();
+        if (t.isPlaying())
+            audioEngine.pushTransportCommand({ TransportCommandType::Pause });
+        else
+            audioEngine.pushTransportCommand({ TransportCommandType::Play });
+        return true;
+    }
+
+    // L – load a WAV file
+    if (k.getKeyCode() == 'l' || k.getKeyCode() == 'L')
+    {
+        fileChooser = std::make_unique<juce::FileChooser>(
+            "Load WAV File", juce::File{}, "*.wav");
+
+        fileChooser->launchAsync(juce::FileBrowserComponent::openMode
+                                | juce::FileBrowserComponent::canSelectFiles,
+            [this](const juce::FileChooser& fc)
+            {
+                auto results = fc.getResults();
+                if (results.isEmpty()) return;
+
+                auto file = results.getFirst();
+                audioEngine.getSampleLibrary().requestLoad(file,
+                    [this, file](std::shared_ptr<AudioClip> clip)
+                    {
+                        if (clip != nullptr)
+                        {
+                            activeClipId = clip->getClipId();
+                            DBG("Active clip set: " + file.getFileName()
+                                + " (id=" + activeClipId + ")");
+                        }
+                    });
+            });
+        return true;
+    }
+
+    // T – stop transport
+    if (k.getKeyCode() == 't' || k.getKeyCode() == 'T')
+    {
+        audioEngine.pushTransportCommand({ TransportCommandType::Stop });
+        return true;
+    }
+
     return false;
 }
 
 void MainComponent::focusGained(FocusChangeType) {}
+
+void MainComponent::removeSoundBlockAt(const Vec3i& voxelPos)
+{
+    Vec3f center(static_cast<float>(voxelPos.x) + 0.5f,
+                 static_cast<float>(voxelPos.y) + 0.5f,
+                 static_cast<float>(voxelPos.z) + 0.5f);
+
+    for (const auto& block : soundScene.getAllBlocks())
+    {
+        float dx = block.position.x - center.x;
+        float dy = block.position.y - center.y;
+        float dz = block.position.z - center.z;
+        if (dx * dx + dy * dy + dz * dz < 0.5f)
+        {
+            soundScene.removeBlock(block.id);
+            return;
+        }
+    }
+}
+
+void MainComponent::createSoundBlockAt(const Vec3f& pos)
+{
+    if (activeClipId.isEmpty())
+        return;
+
+    SoundBlock block;
+    block.position = pos;
+    block.startTime = 0.0f;
+    block.duration = 0.0f;
+    block.clipId = activeClipId;
+    block.gainDb = 0.0f;
+    block.looping = true;
+    block.attenuationRadius = AudioConfig::kDefaultAttenRadius;
+    block.spread = 0.0f;
+    block.active = true;
+
+    soundScene.addBlock(block);
+}

@@ -9,6 +9,8 @@
 #include "Camera.h"
 #include "Raycaster.h"
 #include "Renderer.h"
+#include "Audio/AudioEngine.h"
+#include "Audio/SoundScene.h"
 #include <atomic>
 #include <vector>
 
@@ -48,9 +50,11 @@ private:
     juce::OpenGLContext openGLContext;
 
     // ── Core subsystems ───────────────────────────────────────────────────────
-    VoxelGrid voxelGrid;
-    Camera    camera;
-    Renderer  renderer;
+    VoxelGrid   voxelGrid;
+    Camera      camera;
+    Renderer    renderer;
+    AudioEngine audioEngine;
+    SoundScene  soundScene;
 
     // ─────────────────────────────────────────────────────────────────────────
     // Pending voxel ops — used for Delete/Backspace (message → GL thread)
@@ -114,6 +118,14 @@ private:
     // Misc placement state
     // ─────────────────────────────────────────────────────────────────────────
     Vec3i lastPlacedPos { 0, 0, 0 };
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Audio: active clip for placement (set by 'L' key to load WAV)
+    // ─────────────────────────────────────────────────────────────────────────
+    juce::String activeClipId;
+    std::unique_ptr<juce::FileChooser> fileChooser;
+    void createSoundBlockAt(const Vec3f& pos);
+    void removeSoundBlockAt(const Vec3i& voxelPos);
 
     // ─────────────────────────────────────────────────────────────────────────
     // Frame timing
