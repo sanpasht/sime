@@ -20,12 +20,15 @@ ViewPortComponent::ViewPortComponent()
     openGLContext.setRenderer(this);
     openGLContext.attachTo(*this);
     openGLContext.setContinuousRepainting(true);
+    audioEngine.loadSample(0, juce::File("/path/to/your.wav"));
+    audioEngine.start();
     
 }
 
 ViewPortComponent::~ViewPortComponent()
 {
     openGLContext.detach();
+    audioEngine.stop();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -52,6 +55,7 @@ void ViewPortComponent::renderOpenGL()
     dt = std::min(dt, 0.1f);
     lastRenderTime = now;
 
+    transport.update(static_cast<double>(dt));
     // ── Camera: mouse look ────────────────────────────────────────────────────
     {
         juce::ScopedLock lock(mouseMutex);
@@ -261,6 +265,18 @@ void ViewPortComponent::renderOpenGL()
     if (renderer.meshDirty)
         renderer.rebuildVoxelMesh(voxelGrid);
 
+    // ── Sequencer + audio ────────────────────────────────────────────────
+    {
+        const auto events = sequencer.update(transport, blockList);
+        audioEngine.processEvents(events);
+ 
+        // Detect loop wrap (transport time jumped backwards)
+        const double curT = transport.currentTimeSec();
+        if (transport.isLooping() && curT < prevTransportTime)
+            SequencerEngine::resetAllBlocks(blockList);
+        prevTransportTime = curT;
+    }
+
     // ── Shift-plane preview position ─────────────────────────────────────────
     bool shiftHeld = juce::ModifierKeys::currentModifiers.isShiftDown();
     shiftPreviewValid = false;
@@ -328,9 +344,10 @@ void ViewPortComponent::renderOpenGL()
     const Mat4  vp     = proj * view;
     Vec3f lightDir     = Vec3f(0.55f, 1.f, 0.4f).normalized();
 
+    renderer.renderGrid(vp);
     renderer.render(vp, lightDir);
     renderer.renderOriginMarker(vp, lightDir);
-    renderer.renderGrid(vp);
+    
 
     // ── Highlights ────────────────────────────────────────────────────────────
     if (shiftHeld)
@@ -366,6 +383,27 @@ void ViewPortComponent::renderOpenGL()
         {
             renderer.renderHighlight(vp, placePos, Vec3f{ 0.2f, 1.f, 0.3f });
         }
+        // Highlight playing blocks
+        for (const auto& b : blockList)
+            if (b.isPlaying)
+                renderer.renderHighlight(vp, b.pos, Vec3f{ 0.f, 1.f, 0.3f });
+    }
+    
+    
+    // Orange: currently selected block in edit mode
+    if (editMode && selectedSerial >= 0)
+    {
+        for (const auto& b : blockList)
+            if (b.serial == selectedSerial)
+                renderer.renderHighlight(vp, b.pos, Vec3f{ 1.f, 0.5f, 0.1f });
+    }
+
+    // Dim yellow highlight for ALL blocks in edit mode so user can see what's selectable
+    if (editMode)
+    {
+        for (const auto& b : blockList)
+            if (b.serial != selectedSerial)
+                renderer.renderHighlight(vp, b.pos, Vec3f{ 0.6f, 0.5f, 0.1f });
     }
 // ── HUD ─────────────────────────────────────────────────────────
     
@@ -407,11 +445,15 @@ void ViewPortComponent::renderOpenGL()
             }
         }
 
-        if (shiftHeld)
+        if (shiftHeld){
             info += "  SHIFT PLANE Y=" + juce::String(shiftPlaneY)
                 + "  (scroll to raise/lower)";
+        }
+        else if (editMode){
+            info += "  EDIT MODE  Click a block to set time  |  E = Exit";
+        }
         else
-            info += "  LMB=Place  RMB=Look/Remove  WASD=Move  Shift=AirPlace  C=Clear";
+            info += "  LMB=Place  RMB=Look/Remove  WASD = Move  Shift=AirPlace  E = Edit  C = Clear";
 
         juce::ScopedLock lock(hud.lock);
         hud.text = info;
@@ -520,6 +562,42 @@ void ViewPortComponent::mouseDown(const juce::MouseEvent& e)
     //     }
     //     return;   // Never treat panel clicks as world placements
     // }
+
+    
+    // ── Edit mode: right-click on existing block ───────────────────────────────
+    if (editMode && e.mods.isRightButtonDown())
+    {
+        const int   w = getWidth(), h = getHeight();
+        const float aspect = (h > 0) ? (float)w / h : 1.f;
+        const Mat4  view_  = camera.getViewMatrix();
+        const Mat4  proj   = camera.getProjectionMatrix(aspect);
+        Vec3f rayDir = Raycaster::screenToRay(e.position.x, e.position.y,
+                                              (float)w, (float)h, view_, proj);
+        RaycastResult hit = Raycaster::cast(camera.getPosition(), rayDir, voxelGrid);
+ 
+        if (hit.hit)
+        {
+            for (const auto& b : blockList)
+            {
+                if (b.pos == hit.voxelPos)
+                {
+                    selectedSerial = b.serial;
+ 
+                    if (onRequestBlockEdit)
+                        onRequestBlockEdit(b.serial,
+                                           b.startTimeSec,
+                                           b.durationSec,
+                                           b.soundId,
+                                           e.getPosition());  // ViewPort-local coords
+                    return;
+                }
+            }
+        }
+ 
+        // Clicked empty space — deselect
+        selectedSerial = -1;
+        return;   // don't place while in edit mode
+    }
 
     // ── RMB: start look drag ──────────────────────────────────────────────────
     if (e.mods.isRightButtonDown())
@@ -646,6 +724,15 @@ bool ViewPortComponent::keyPressed(const juce::KeyPress& k)
     if (k.getKeyCode() == 'c' || k.getKeyCode() == 'C')
     {
         pendingClear = true;
+        return true;
+    }
+
+    // E – toggle edit mode
+    if (k.getKeyCode() == 'e' || k.getKeyCode() == 'E')
+    {
+        editMode = !editMode;
+        selectedSerial = -1;
+        juce::MessageManager::callAsync([this]() { repaint(); });
         return true;
     }
 
