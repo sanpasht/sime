@@ -3,8 +3,9 @@
 #include "ViewPortComponent.h"
 #include "SidebarComponent.h"
 #include "BlockEditPopup.h"
+#include "TransportBarComponent.h"
 
-class MainComponent : public juce::Component
+class MainComponent : public juce::Component, private juce::Timer
 {
 public:
     MainComponent();
@@ -15,8 +16,8 @@ private:
     ViewPortComponent view;
     SidebarComponent  sidebar;
     BlockEditPopup    editPopup;
-
+    TransportBarComponent transportBar;
     bool isSidebarCollapsed = false;
-
+    void timerCallback() override;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };

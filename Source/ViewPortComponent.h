@@ -50,16 +50,6 @@ public:
 
     void setSidebarComponent(SidebarComponent* s) { sidebar = s; }
 
-    // ── Transport controls  (bind to toolbar buttons) ─────────────────────────
-    void transportPlay()  { transport.start(); }
-    void transportPause() { transport.pause(); }
-    void transportStop()
-    {
-        transport.stop();
-        SequencerEngine::resetAllBlocks(blockList);
-    }
-
-
     // ── Edit mode API (called by MainComponent) ───────────────────────────────
  
     /// Fired when user clicks a block in edit mode.
@@ -90,6 +80,28 @@ public:
         selectedSerial = -1;
     }
 
+
+    // ── Transport state queries (called by MainComponent to update transport bar) ─────
+
+    bool   isTransportPlaying() const noexcept { return transport.isPlaying(); }
+    bool   isTransportPaused()  const noexcept { return transport.isPaused();  }
+    double getTransportTime()   const noexcept { return transport.currentTimeSec(); }
+
+    double getTransportDuration() const noexcept
+    {
+        double maxEnd = 0.0;
+        for (const auto& b : blockList)
+            maxEnd = std::max(maxEnd, b.endTimeSec());
+        return maxEnd;
+    }
+
+    void transportPlay()  { transport.start(); }
+    void transportPause() { transport.pause(); }
+    void transportStop()
+    {
+        transport.stop();
+        SequencerEngine::resetAllBlocks(blockList);
+    }
 
 
 

@@ -26,6 +26,7 @@ target_sources(SIME PRIVATE
     Source/SequencerEngine.cpp
     Source/TransportClock.cpp
     Source/Blockeditpopup.cpp
+    Source/TransportBarComponent.cpp
 )
 
 target_compile_definitions(SIME PRIVATE
