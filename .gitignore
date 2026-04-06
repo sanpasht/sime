@@ -2,3 +2,4 @@
 JUCE/
 *.user
 .vs/
+.vscode/

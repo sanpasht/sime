@@ -16,9 +16,16 @@ public:
 
     void initialise(const juce::String& /*commandLineArgs*/) override
     {
+        juce::AlertWindow::showMessageBoxAsync(
+        juce::MessageBoxIconType::InfoIcon,
+        "startup", "initialise called");
         mainWindow.reset(new MainWindow("SIME",
                                         new MainComponent(),
                                         *this));
+
+        juce::AlertWindow::showMessageBoxAsync(
+        juce::MessageBoxIconType::InfoIcon,
+        "startup", "window created");     
     }
 
     void shutdown() override

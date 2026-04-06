@@ -17,9 +17,16 @@ juce_add_gui_app(SIME
 target_sources(SIME PRIVATE
     Source/Main.cpp
     Source/MainComponent.cpp
+    Source/SidebarComponent.cpp
     Source/Camera.cpp
     Source/Raycaster.cpp
     Source/Renderer.cpp
+    Source/ViewPortComponent.cpp
+    Source/AudioEngine.cpp
+    Source/SequencerEngine.cpp
+    Source/TransportClock.cpp
+    Source/Blockeditpopup.cpp
+    Source/TransportBarComponent.cpp
 )
 
 target_compile_definitions(SIME PRIVATE
@@ -36,6 +43,9 @@ target_link_libraries(SIME PRIVATE
     juce::juce_graphics
     juce::juce_gui_basics
     juce::juce_opengl
+    juce::juce_audio_basics      # AudioBuffer, FloatVectorOperations
+    juce::juce_audio_devices     # AudioDeviceManager, AudioSourcePlayer
+    juce::juce_audio_formats     # AudioFormatManager, AudioFormatReader
 )
 
 juce_generate_juce_header(SIME)
