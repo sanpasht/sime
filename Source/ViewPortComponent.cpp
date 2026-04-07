@@ -9,12 +9,23 @@ using namespace juce::gl;
 #include <cmath>
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Grid bounds  — must match buildGridMesh(40) in Renderer.cpp
+// ─────────────────────────────────────────────────────────────────────────────
+static constexpr int kGridHalf = 40;
+
+static bool isInBounds(const Vec3i& pos)
+{
+    return pos.x >= -kGridHalf && pos.x < kGridHalf
+        && pos.z >= -kGridHalf && pos.z < kGridHalf
+        && pos.y >= 0;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Constructor / Destructor
 // ─────────────────────────────────────────────────────────────────────────────
 
 ViewPortComponent::ViewPortComponent()
 {
-    setSize(1060, 720);
     setWantsKeyboardFocus(true);
     openGLContext.setOpenGLVersionRequired(juce::OpenGLContext::openGL3_2);
     openGLContext.setRenderer(this);
@@ -22,7 +33,6 @@ ViewPortComponent::ViewPortComponent()
     openGLContext.setContinuousRepainting(true);
     audioEngine.loadSample(0, juce::File("/path/to/your.wav"));
     audioEngine.start();
-    
 }
 
 ViewPortComponent::~ViewPortComponent()
@@ -74,7 +84,7 @@ void ViewPortComponent::renderOpenGL()
     {
         int delta = shiftScrollDelta.exchange(0);
         if (delta != 0)
-            shiftPlaneY = std::max(0, shiftPlaneY + delta);
+            shiftPlaneY = std::clamp(shiftPlaneY + delta, 0, kGridHalf - 1);
     }
 
     // ── Clear all ─────────────────────────────────────────────────────────────
@@ -204,7 +214,9 @@ void ViewPortComponent::renderOpenGL()
             }
         }
 
-        // Reject origin marker and already-occupied cells
+        // Reject out-of-bounds, origin marker, and already-occupied cells
+        if (valid && !isInBounds(placePos))
+            valid = false;
         if (valid && placePos.x == 0 && placePos.y == 0 && placePos.z == 0)
             valid = false;
         if (valid && voxelGrid.contains(placePos))
@@ -330,7 +342,10 @@ void ViewPortComponent::renderOpenGL()
     const int w = getWidth(), h = getHeight();
     if (w <= 0 || h <= 0) return;
 
-    glViewport(0, 0, w, h);
+    // Use the physical framebuffer size for the GL viewport (correct for rendering),
+    // but keep aspect ratio from logical size so it matches the raycast.
+    const float scale = (float)openGLContext.getRenderingScale();
+    glViewport(0, 0, (int)(w * scale), (int)(h * scale));
     glClearColor(0.12f, 0.13f, 0.18f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
@@ -363,23 +378,23 @@ void ViewPortComponent::renderOpenGL()
             renderer.renderHighlight(vp, currentHit.voxelPos,
                                      Vec3f{ 1.f, 0.85f, 0.1f });
 
-        // Green: normal placement preview
+        // Green: placement preview — always visible whenever the cursor points at
+        // something. We show it on the adjacent face of the hit block even if that
+        // face is already occupied, so the outline never disappears mid-scene.
         Vec3i placePos;
         bool  validPlace = false;
         if (hasHit && currentHit.hit)
         {
             placePos   = Raycaster::getPlacementPos(currentHit);
-            validPlace = (placePos.y >= 0);
+            validPlace = (placePos.y >= 0) && isInBounds(placePos);
         }
         else
         {
             Vec3i gp = Raycaster::groundPlaneHit(camera.getPosition(), currentRayDir);
-            if (gp != Vec3i{}) { placePos = gp; validPlace = (placePos.y >= 0); }
+            if (gp != Vec3i{}) { placePos = gp; validPlace = (placePos.y >= 0) && isInBounds(placePos); }
         }
 
-        if (validPlace
-            && !voxelGrid.contains(placePos)
-            && !(placePos.x == 0 && placePos.y == 0 && placePos.z == 0))
+        if (validPlace && !voxelGrid.contains(placePos) && !(placePos.x == 0 && placePos.y == 0 && placePos.z == 0))
         {
             renderer.renderHighlight(vp, placePos, Vec3f{ 0.2f, 1.f, 0.3f });
         }
@@ -484,6 +499,13 @@ void ViewPortComponent::processKeyboardMovement(float dt)
         if (KP::isKeyCurrentlyDown('w') || KP::isKeyCurrentlyDown('W')) camera.moveForward( extra);
         if (KP::isKeyCurrentlyDown('s') || KP::isKeyCurrentlyDown('S')) camera.moveForward(-extra);
     }
+
+    // Clamp camera to grid bounds so you can't walk off the edge
+    Vec3f pos = camera.getPosition();
+    const float kLimit = (float)kGridHalf - 0.5f;
+    pos.x = std::clamp(pos.x, -kLimit, kLimit);
+    pos.z = std::clamp(pos.z, -kLimit, kLimit);
+    camera.setPosition(pos);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -492,12 +514,18 @@ void ViewPortComponent::processKeyboardMovement(float dt)
 
 void ViewPortComponent::doRaycast(float mx, float my)
 {
-    const int   w = getWidth(), h = getHeight();
-    const float aspect = (h > 0) ? (float)w / h : 1.f;
+    // Use the component's logical size (same coordinate space as mouse events).
+    // Do NOT use the GL framebuffer physical pixel size — mouse coords are
+    // in logical pixels, so the projection must match.
+    const float w = (float)getWidth();
+    const float h = (float)getHeight();
+    if (w <= 0.f || h <= 0.f) return;
+
+    const float aspect = w / h;
     const Mat4  view = camera.getViewMatrix();
     const Mat4  proj = camera.getProjectionMatrix(aspect);
 
-    Vec3f rayDir  = Raycaster::screenToRay(mx, my, (float)w, (float)h, view, proj);
+    Vec3f rayDir  = Raycaster::screenToRay(mx, my, w, h, view, proj);
     currentHit    = Raycaster::cast(camera.getPosition(), rayDir, voxelGrid);
     hasHit        = currentHit.hit;
     currentRayDir = rayDir;
@@ -621,24 +649,22 @@ void ViewPortComponent::mouseDown(const juce::MouseEvent& e)
 
 void ViewPortComponent::mouseUp(const juce::MouseEvent& e)
 {
-    if (!e.mods.isRightButtonDown())
+    // Check our own rightDown flag — JUCE clears button from mods before mouseUp fires.
+    bool wasRight;
     {
-        float dragDist;
-        {
-            juce::ScopedLock lock(mouseMutex);
-            dragDist        = mouse.rightDragDist;
+        juce::ScopedLock lock(mouseMutex);
+        wasRight = mouse.rightDown;
+        if (wasRight)
             mouse.rightDown = false;
-        }
-        setMouseCursor(juce::MouseCursor::NormalCursor);
-
-        // Short drag with no significant movement → treat as a remove click
-        constexpr float kClickThreshold = 5.f;
-        if (dragDist < kClickThreshold)   //&& !isPanelHit(e.position.x, e.position.y)
-        {
-            juce::ScopedLock lock(clickMutex);
-            pendingRemove = { true, e.position.x, e.position.y, false };
-        }
     }
+
+    if (wasRight)
+    {
+        // RMB released — just restore cursor. Removal is Backspace only.
+        setMouseCursor(juce::MouseCursor::NormalCursor);
+    }
+
+    // LMB release — do nothing (placement happened on mouseDown)
 }
 
 void ViewPortComponent::mouseDrag(const juce::MouseEvent& e)
@@ -648,7 +674,9 @@ void ViewPortComponent::mouseDrag(const juce::MouseEvent& e)
         mouse.curX = e.position.x;
         mouse.curY = e.position.y;
 
-        if (mouse.rightDown)
+        // Only rotate the camera when RMB is the drag button.
+        // LMB drags must never affect the camera.
+        if (mouse.rightDown && e.mods.isRightButtonDown())
         {
             float dx = e.position.x - mouse.rightDownPos.x;
             float dy = e.position.y - mouse.rightDownPos.y;
@@ -708,9 +736,8 @@ bool ViewPortComponent::keyPressed(const juce::KeyPress& k)
         return true;
     }
 
-    // Delete / Backspace – remove hovered voxel
-    if (k.getKeyCode() == juce::KeyPress::deleteKey
-     || k.getKeyCode() == juce::KeyPress::backspaceKey)
+    // Backspace only – remove hovered voxel (Delete key is reserved)
+    if (k.getKeyCode() == juce::KeyPress::backspaceKey)
     {
         if (hasHit && currentHit.hit)
         {

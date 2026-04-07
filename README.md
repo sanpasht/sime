@@ -1,37 +1,41 @@
-# SIME SPATIAL
+# SIME
 
-A 3-D voxel construction tool built with JUCE + OpenGL 3.3.
-
-## Prerequisites
-
-| Requirement | Version |
-|-------------|---------|
-| CMake       | ≥ 3.22  |
-| C++ compiler| C++17   |
-| OpenGL      | ≥ 3.3   |
-| JUCE        | 7.x or 8.x |
-
-**Platform tested:** Linux (X11/Wayland), macOS 12+, Windows 10+.
+A 3D voxel-based spatial audio sequencer built with JUCE and OpenGL 3.3.  
+Place blocks in 3D space, assign sounds and timing to them, and play back a spatial audio sequence.
 
 ---
 
-## Build
+## Building from Source
+
+### Requirements
+
+| Tool | Version | Download |
+|------|---------|----------|
+| Git | Any | https://git-scm.com/download/win |
+| CMake | 3.22+ | https://cmake.org/download/ — check "Add to PATH" |
+| Visual Studio Build Tools | 2022 | https://visualstudio.microsoft.com/visual-cpp-build-tools/ — select **Desktop development with C++** |
+
+### Steps
 
 ```bash
-# 1. Clone JUCE into the project root
-cd SIME
+# 1. Clone the repo
+git clone --recurse-submodules https://github.com/sanpasht/sime
+cd sime
+
+# 2. Clone JUCE (if not already present as a submodule)
 git clone https://github.com/juce-framework/JUCE.git JUCE
 
-# 2. Configure
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-
-# 3. Compile  (use -j$(nproc) or -j8 etc. for parallel)
-cmake --build build --parallel
-
-# 4. Run
-./build/SIME_artefacts/Release/SIME
-# (macOS: open build/SIMEr_artefacts/Release/SIME.app)
+# 3. Configure and build
+cmake -B build -G "Visual Studio 17 2022"
+cmake --build build --config Release --parallel
 ```
+
+The executable will be at:
+```
+build\SIME_artefacts\Release\SIME.exe
+```
+
+> **Note:** If CMake reports a generator mismatch, delete the `build/` folder and re-run the cmake configure step.
 
 ---
 
@@ -39,63 +43,108 @@ cmake --build build --parallel
 
 | Input | Action |
 |-------|--------|
-| **LMB click** | Place voxel at the highlighted green cell |
-| **RMB drag** | Rotate camera (free-look) |
-| **RMB click** (no drag) | Remove the hovered voxel |
-| **W / S** | Move forward / backward |
-| **A / D** | Strafe left / right |
-| **Space** | Move up |
-| **Ctrl** | Move down |
-| **Alt + WASD** | Double movement speed |
-| **Mouse wheel** | Dolly forward / backward |
-| **Shift + LMB** | Axis-locked placement (constrain to one axis) |
-| **Delete / Backspace** | Remove the currently hovered voxel |
-| **R** | Reset camera to default position (8, 8, 8) |
-| **C** | Clear all voxels |
+| **LMB click** | Place a voxel block |
+| **RMB drag** | Rotate camera (look around) |
+| **WASD** | Move camera horizontally |
+| **Space** | Move camera up |
+| **Ctrl** | Move camera down |
+| **Shift + LMB** | Place block in mid-air on the shift plane |
+| **Scroll wheel** (Shift held) | Raise / lower the shift plane Y level |
+| **Scroll wheel** | Camera zoom |
+| **E** | Toggle edit mode (click blocks to set timing/sound) |
+| **R** | Reset camera to default position |
+| **C** | Clear all blocks |
+| **Delete / Backspace** | Remove currently hovered block |
 
 ---
 
-## Architecture
+## Where to Change Things
+
+This section maps features to the files you need to edit.
+
+### Camera behaviour
+**`Source/Camera.cpp` / `Source/Camera.h`**
+- Movement speed → `moveSpeed` in `Camera.h`
+- Look sensitivity → `lookSpeed` in `Camera.h`
+- Field of view → `fovY` in `Camera.h`
+- Floor clamp (minimum Y) → `moveUp()` in `Camera.cpp`
+- Near/far clip planes → `nearZ` / `farZ` in `Camera.h`
+
+### Block placement & raycasting
+**`Source/ViewPortComponent.cpp`**
+- How blocks are placed (normal, shift-plane, ground fallback) → `renderOpenGL()` place section
+- Shift-plane anchor logic → `shiftAnchorSet` block inside `renderOpenGL()`
+- Raycast distance / max steps → `Raycaster::MAX_STEPS` / `MAX_DIST` in `Source/Raycaster.h`
+- Block outline colours (green = preview, yellow = hover, cyan = shift, orange = selected) → `renderHighlight()` calls in `renderOpenGL()`
+
+### Rendering & visuals
+**`Source/Renderer.cpp` / `Source/Renderer.h`**
+- Voxel colour → `glUniform3f(uColor_v, ...)` in `render()`
+- Grid size → `buildGridMesh(halfSize)` — change the `40` argument in `init()`
+- Origin marker colour → `renderOriginMarker()` in `Renderer.cpp`
+- Lighting direction → `lightDir` in `renderOpenGL()` in `ViewPortComponent.cpp`
+
+### Audio
+**`Source/AudioEngine.cpp` / `Source/AudioEngine.h`**
+- Load a sound file → `audioEngine.loadSample(soundId, juce::File("path/to/file.wav"))` in `ViewPortComponent` constructor
+- Voice gain → `voice.gain` in `handleStartEvent()`
+- Max polyphony → `activeVoices_` size (currently unlimited; add a cap in `handleStartEvent()`)
+
+### Sequencer / timing
+**`Source/SequencerEngine.cpp`**
+- How block start/stop events are fired → `update()` method
+- Loop behaviour → `TransportClock` in `Source/TransportClock.cpp`
+
+### Sidebar (block list)
+**`Source/SidebarComponent.cpp`**
+- Row height, font size → `kRowH`, `kHeaderH` constants
+- Collapsed width → `MainComponent::resized()` in `Source/MainComponent.cpp`
+
+### Transport bar (Play/Pause/Stop)
+**`Source/TransportBarComponent.cpp`**
+- Button appearance / labels → constructor
+- Progress bar colours → `paint()` gradient colours
+- Auto-stop behaviour → `timerCallback()` in `Source/MainComponent.cpp`
+
+### Block edit popup
+**`Source/BlockEditPopup.cpp` / `Source/BlockEditPopup.h`**
+- Fields shown (start time, duration, sound ID) → `showAt()` and `commit()`
+- Popup size → `kWidth` / `kHeight` constants in the header
+
+### Layout
+**`Source/MainComponent.cpp`**
+- Sidebar width (collapsed vs expanded) → `resized()`
+- Transport bar height → `TransportBarComponent::kHeight` in the header
+
+---
+
+## Project Structure
 
 ```
 SIME/
-├── CMakeLists.txt
+├── CMakeLists.txt          # Build config
+├── JUCE/                   # JUCE framework (cloned separately)
 └── Source/
-    ├── Main.cpp            – JUCE app entry point
-    ├── MainComponent.h/.cpp – Top-level component; owns all subsystems;
-    │                          bridges JUCE message thread ↔ GL thread
-    ├── Camera.h/.cpp       – Free-look camera (yaw + pitch, WASD + mouse)
-    ├── Raycaster.h/.cpp    – Screen→ray unprojection; Amanatides & Woo DDA
-    ├── Renderer.h/.cpp     – OpenGL 3.3 batch renderer (shaders, VAO/VBO)
-    ├── VoxelGrid.h         – Sparse voxel storage (unordered_set<Vec3i>)
-    └── MathUtils.h         – Vec3i, Vec3f, Mat4 (no external math library)
+    ├── Main.cpp                  # App entry point
+    ├── MainComponent.cpp/h       # Top-level layout (sidebar + viewport + transport)
+    ├── ViewPortComponent.cpp/h   # 3D OpenGL viewport, input handling, sequencer loop
+    ├── Renderer.cpp/h            # OpenGL batch renderer (voxels, grid, highlights)
+    ├── Camera.cpp/h              # First-person camera
+    ├── Raycaster.cpp/h           # DDA voxel raycasting
+    ├── VoxelGrid.h               # Sparse voxel data structure
+    ├── MathUtils.h               # Vec3i, Vec3f, Mat4
+    ├── AudioEngine.cpp/h         # JUCE audio playback engine
+    ├── SequencerEngine.cpp/h     # Block → audio event sequencer
+    ├── TransportClock.cpp/h      # Playback clock (play/pause/stop/loop)
+    ├── SidebarComponent.cpp/h    # Left-side block list panel
+    ├── TransportBarComponent.cpp/h # Bottom play/pause/stop bar
+    └── BlockEditPopup.cpp/h      # Floating block edit dialog
 ```
-
-### Thread model
-
-* **Message thread** – handles mouse/keyboard events; enqueues `VoxelOp` structs
-  protected by `opsMutex`.
-* **GL thread** – `renderOpenGL()` drains the op queue, rebuilds the voxel mesh
-  when dirty, raycasts at the cursor position, and draws the scene.
-
-### Rendering pipeline (per frame)
-
-1. Drain `pendingOps` → mutate `VoxelGrid`
-2. Rebuild voxel VBO if `meshDirty`
-3. Raycast at cursor → compute hit voxel + placement preview
-4. `glClear`, set depth test + back-face cull
-5. `Renderer::render()` – solid voxels (hemisphere lighting, blue tint)
-6. `Renderer::renderGrid()` – grey reference grid at y = 0
-7. `Renderer::renderHighlight()` – yellow on hit voxel, green on placement preview
 
 ---
 
-## Extending
+## Contributing
 
-* **Face culling** – `Renderer::rebuildVoxelMesh()` currently emits all 6 faces
-  per voxel. Checking `VoxelGrid::contains(neighbour)` before each face reduces
-  geometry by ~85 % on dense structures.
-* **Chunking** – split the grid into 16³ chunks; only rebuild dirty chunks.
-* **Multiple colours** – store a colour index alongside each `Vec3i` in the
-  grid, and pass it as a per-vertex attribute.
-* **Save / load** – serialise `VoxelGrid::getVoxels()` to a binary or JSON file.
+1. Fork the repo and create a branch from `main`
+2. Make your changes
+3. Open a pull request with a clear description of what changed and why

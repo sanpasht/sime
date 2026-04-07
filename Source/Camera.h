@@ -70,7 +70,7 @@ public:
     float lookSpeed  = 0.003f;  ///< Radians per pixel
 
 private:
-    Vec3f position { 8.f, 8.f, 8.f };
+    Vec3f position { 6.f, 6.f, -4.f };
     float yaw   = -2.3f;   ///< Radians; initial angle looks roughly toward origin
     float pitch = -0.45f;  ///< Radians; slight downward tilt
 };
