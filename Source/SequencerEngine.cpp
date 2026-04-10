@@ -28,6 +28,9 @@ std::vector<SequencerEvent> SequencerEngine::update(const TransportClock&    clo
             ev.blockSerial    = block.serial;
             ev.soundId        = block.soundId;
             ev.triggerTimeSec = now;
+            ev.blockX         = static_cast<float>(block.pos.x);
+            ev.blockY         = static_cast<float>(block.pos.y);
+            ev.blockZ         = static_cast<float>(block.pos.z);
             eventBuffer_.push_back(ev);
         }
 

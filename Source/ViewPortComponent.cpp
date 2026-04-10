@@ -31,7 +31,9 @@ ViewPortComponent::ViewPortComponent()
     openGLContext.setRenderer(this);
     openGLContext.attachTo(*this);
     openGLContext.setContinuousRepainting(true);
-    audioEngine.loadSample(0, juce::File("/path/to/your.wav"));
+    audioEngine.generateTestTone(0, 440.0f, 2.0);
+    audioEngine.generateTestTone(1, 660.0f, 2.0);
+    audioEngine.generateTestTone(2, 880.0f, 2.0);
     audioEngine.start();
 }
 
@@ -225,7 +227,11 @@ void ViewPortComponent::renderOpenGL()
         if (valid)
         {
             voxelGrid.add(placePos);
-            blockList.push_back({ nextSerial++, placePos });
+            BlockEntry newBlock;
+            newBlock.serial  = nextSerial++;
+            newBlock.pos     = placePos;
+            newBlock.soundId = 0;
+            blockList.push_back(newBlock);
             lastPlacedPos = placePos;
             renderer.meshDirty = true;
             std::vector<SidebarComponent::BlockEntry> uiBlocks;
