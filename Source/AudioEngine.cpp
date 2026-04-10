@@ -42,6 +42,37 @@ void AudioEngine::clearSamples()
     sampleLibrary_.clear();
 }
 
+// ---------------------------------------------------------------------------
+void AudioEngine::generateTestTone(int soundId, float frequencyHz, double durationSec)
+{
+    constexpr double kGenRate = 44100.0;
+    const int numSamples = static_cast<int>(kGenRate * durationSec);
+
+    juce::AudioBuffer<float> buf(1, numSamples);
+    float* data = buf.getWritePointer(0);
+
+    const float twoPi = juce::MathConstants<float>::twoPi;
+    const float phaseInc = twoPi * frequencyHz / static_cast<float>(kGenRate);
+
+    // Sine wave with a short fade-in/out to avoid clicks
+    const int fadeSamples = std::min(256, numSamples / 2);
+
+    for (int i = 0; i < numSamples; ++i)
+    {
+        float sample = std::sin(phaseInc * static_cast<float>(i));
+
+        float envelope = 1.0f;
+        if (i < fadeSamples)
+            envelope = static_cast<float>(i) / static_cast<float>(fadeSamples);
+        else if (i > numSamples - fadeSamples)
+            envelope = static_cast<float>(numSamples - i) / static_cast<float>(fadeSamples);
+
+        data[i] = sample * envelope * 0.4f;
+    }
+
+    sampleLibrary_[soundId] = std::move(buf);
+}
+
 // ============================================================================
 // Event ingestion (message thread)
 // ============================================================================
@@ -71,6 +102,7 @@ void AudioEngine::prepareToPlay(int samplesPerBlockExpected, double sampleRate)
     sampleRate_ = sampleRate;
     blockSize_  = samplesPerBlockExpected;
     activeVoices_.clear();
+    activeVoices_.reserve(32);
 }
 
 // ---------------------------------------------------------------------------
@@ -107,25 +139,24 @@ void AudioEngine::getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferTo
     {
         if (voice.buffer == nullptr) continue;
 
-        const int srcChannels  = voice.buffer->getNumChannels();
-        const int remaining    = voice.buffer->getNumSamples() - voice.samplePosition;
-        const int toCopy       = std::min(numSamples, remaining);
+        const int totalSrc = voice.buffer->getNumSamples();
+        auto* outL = outputBuffer->getWritePointer(0, startSample);
+        auto* outR = (outputChannels > 1)
+                     ? outputBuffer->getWritePointer(1, startSample)
+                     : nullptr;
 
-        for (int ch = 0; ch < outputChannels; ++ch)
+        for (int i = 0; i < numSamples; ++i)
         {
-            // Map output channel to source channel (handles mono → stereo)
-            const int srcCh = std::min(ch, srcChannels - 1);
+            const int srcIdx = static_cast<int>(voice.samplePositionF);
+            if (srcIdx >= totalSrc) break;
 
-            outputBuffer->addFrom(ch,
-                                  startSample,
-                                  *voice.buffer,
-                                  srcCh,
-                                  voice.samplePosition,
-                                  toCopy,
-                                  voice.gain);
+            const float sample = voice.buffer->getSample(0, srcIdx);
+
+            outL[i] += sample * voice.leftGain;
+            if (outR) outR[i] += sample * voice.rightGain;
+
+            voice.samplePositionF += voice.pitchRate;
         }
-
-        voice.samplePosition += toCopy;
     }
 
     // ---- 3. Remove finished voices --------------------------------------
@@ -171,14 +202,30 @@ void AudioEngine::handleStartEvent(const SequencerEvent& ev)
 {
     auto it = sampleLibrary_.find(ev.soundId);
     if (it == sampleLibrary_.end())
-        return;   // Sound not loaded; silently ignore
+        return;
 
     ActiveVoice voice;
-    voice.blockSerial    = ev.blockSerial;
-    voice.soundId        = ev.soundId;
-    voice.samplePosition = 0;
-    voice.buffer         = &it->second;
-    voice.gain           = 1.0f;
+    voice.blockSerial     = ev.blockSerial;
+    voice.soundId         = ev.soundId;
+    voice.samplePositionF = 0.0f;
+    voice.buffer          = &it->second;
+
+    // Z → proximity gain: inverse distance falloff
+    constexpr float refDist = 5.0f;
+    const float dist = std::abs(ev.blockZ);
+    voice.gain = juce::jlimit(0.0f, 1.0f, refDist / (refDist + dist));
+
+    // Y → pitch: each grid unit = one semitone
+    voice.pitchRate = juce::jlimit(0.25f, 4.0f,
+                                   std::pow(2.0f, ev.blockY / 12.0f));
+
+    // X → stereo pan: ±20 grid units maps to full left/right
+    voice.pan = juce::jlimit(-1.0f, 1.0f, ev.blockX / 20.0f);
+    const float angle = (voice.pan + 1.0f) * 0.25f
+                        * juce::MathConstants<float>::pi;
+    voice.leftGain  = voice.gain * std::cos(angle);
+    voice.rightGain = voice.gain * std::sin(angle);
+
     activeVoices_.push_back(voice);
 }
 

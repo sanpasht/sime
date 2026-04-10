@@ -18,18 +18,22 @@
 // ---------------------------------------------------------------------------
 struct ActiveVoice
 {
-    int    blockSerial    = -1;   ///< Block that triggered this voice
-    int    soundId        = -1;   ///< Which sample is being played
-    int    samplePosition = 0;    ///< Read cursor within the sample buffer (in samples)
-    bool   stopping       = false;///< Marked true when a Stop event arrives; fades then removes
-    float  gain           = 1.0f; ///< Per-voice output gain (0–1)
+    int    blockSerial      = -1;
+    int    soundId          = -1;
+    float  samplePositionF  = 0.0f; ///< Fractional read cursor (supports pitch shifting)
+    bool   stopping         = false;
+    float  gain             = 1.0f;
+    float  pan              = 0.0f; ///< -1 = full left, 0 = center, +1 = full right
+    float  pitchRate        = 1.0f; ///< Playback rate multiplier (1.0 = normal, 2.0 = octave up)
+    float  leftGain         = 1.0f; ///< Precomputed left channel gain (gain * pan law)
+    float  rightGain        = 1.0f; ///< Precomputed right channel gain
 
-    // Pointer into the sample library (non-owning; owned by AudioEngine)
     const juce::AudioBuffer<float>* buffer = nullptr;
 
     bool isFinished() const noexcept
     {
-        return buffer == nullptr || samplePosition >= buffer->getNumSamples();
+        return buffer == nullptr
+            || static_cast<int>(samplePositionF) >= buffer->getNumSamples();
     }
 };
 
@@ -71,6 +75,10 @@ public:
     /// Load an audio file from disk and associate it with soundId.
     /// Returns true on success.
     bool loadSample(int soundId, const juce::File& audioFile);
+
+    /// Synthesize a sine-wave test tone and store it in the sample library.
+    /// Safe to call from message thread before start().
+    void generateTestTone(int soundId, float frequencyHz, double durationSec);
 
     /// Remove all loaded samples (call with audio stopped).
     void clearSamples();

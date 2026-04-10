@@ -20,4 +20,7 @@ struct SequencerEvent
     int blockSerial            = -1;  ///< Identifies which block triggered this event
     int soundId                = -1;  ///< Which sample to play / stop
     double triggerTimeSec      = 0.0; ///< Transport time at which the event fired
+    float blockX               = 0.0f; ///< Block grid X (used for stereo pan)
+    float blockY               = 0.0f; ///< Block grid Y (used for pitch)
+    float blockZ               = 0.0f; ///< Block grid Z (used for proximity/gain)
 };
