@@ -1,7 +1,7 @@
 # SIME
 
 A 3D voxel-based spatial audio sequencer built with JUCE and OpenGL 3.3.  
-Place blocks in 3D space, assign sounds and timing to them, and play back a spatial audio sequence.
+Place blocks in 3D space, choose instrument types, assign sounds, and play back a spatial audio sequence.
 
 ---
 
@@ -39,82 +39,71 @@ build\SIME_artefacts\Release\SIME.exe
 
 ---
 
-## Controls
+## Block Types
 
-| Input | Action |
-|-------|--------|
-| **LMB click** | Place a voxel block |
-| **RMB drag** | Rotate camera (look around) |
-| **WASD** | Move camera horizontally |
-| **Space** | Move camera up |
-| **Ctrl** | Move camera down |
-| **Shift + LMB** | Place block in mid-air on the shift plane |
-| **Scroll wheel** (Shift held) | Raise / lower the shift plane Y level |
-| **Scroll wheel** | Camera zoom |
-| **E** | Toggle edit mode (click blocks to set timing/sound) |
-| **R** | Reset camera to default position |
-| **C** | Clear all blocks |
-| **Delete / Backspace** | Remove currently hovered block |
+Select a block type from the toolbar at the top of the viewport before placing.
+
+| Type | Color | Sound | Description |
+|------|-------|-------|-------------|
+| **Violin** | Red | Vibrato + harmonics (string-like) | 3 pitch presets (A3, D4, G3) |
+| **Piano** | Blue | Sharp attack, decaying harmonics | 3 pitch presets (C4, A4, C5) |
+| **Drum** | Green | Kick / Snare / Hi-Hat | 3 percussive sounds |
+| **Custom** | Varies | User WAV file | Pick any `.wav` via file browser |
+
+Custom blocks get a deterministic color (white, yellow, cyan, magenta, orange, or purple) based on their assigned sound.
 
 ---
 
-## Where to Change Things
+## Controls
 
-This section maps features to the files you need to edit.
+### Navigation
 
-### Camera behaviour
-**`Source/Camera.cpp` / `Source/Camera.h`**
-- Movement speed → `moveSpeed` in `Camera.h`
-- Look sensitivity → `lookSpeed` in `Camera.h`
-- Field of view → `fovY` in `Camera.h`
-- Floor clamp (minimum Y) → `moveUp()` in `Camera.cpp`
-- Near/far clip planes → `nearZ` / `farZ` in `Camera.h`
+| Input | Action |
+|-------|--------|
+| **WASD** | Move camera horizontally |
+| **Space** | Move camera up |
+| **Ctrl** | Move camera down |
+| **RMB drag** | Rotate camera (look around) |
+| **Scroll wheel** | Camera zoom |
+| **R** | Reset camera to default position |
+| **Alt + WASD** | Move camera faster |
 
-### Block placement & raycasting
-**`Source/ViewPortComponent.cpp`**
-- How blocks are placed (normal, shift-plane, ground fallback) → `renderOpenGL()` place section
-- Shift-plane anchor logic → `shiftAnchorSet` block inside `renderOpenGL()`
-- Raycast distance / max steps → `Raycaster::MAX_STEPS` / `MAX_DIST` in `Source/Raycaster.h`
-- Block outline colours (green = preview, yellow = hover, cyan = shift, orange = selected) → `renderHighlight()` calls in `renderOpenGL()`
+### Block Placement
 
-### Rendering & visuals
-**`Source/Renderer.cpp` / `Source/Renderer.h`**
-- Voxel colour → `glUniform3f(uColor_v, ...)` in `render()`
-- Grid size → `buildGridMesh(halfSize)` — change the `40` argument in `init()`
-- Origin marker colour → `renderOriginMarker()` in `Renderer.cpp`
-- Lighting direction → `lightDir` in `renderOpenGL()` in `ViewPortComponent.cpp`
+| Input | Action |
+|-------|--------|
+| **Toolbar buttons** | Select active block type (Violin / Piano / Drum / Custom) |
+| **LMB click** | Place a block of the selected type |
+| **Shift + LMB** | Place block in mid-air on the shift plane |
+| **Scroll wheel** (Shift held) | Raise / lower the shift plane Y level |
+| **Backspace** | Remove currently hovered block |
+| **C** | Clear all blocks |
 
-### Audio
-**`Source/AudioEngine.cpp` / `Source/AudioEngine.h`**
-- Load a sound file → `audioEngine.loadSample(soundId, juce::File("path/to/file.wav"))` in `ViewPortComponent` constructor
-- Voice gain → `voice.gain` in `handleStartEvent()`
-- Max polyphony → `activeVoices_` size (currently unlimited; add a cap in `handleStartEvent()`)
+### Editing
 
-### Sequencer / timing
-**`Source/SequencerEngine.cpp`**
-- How block start/stop events are fired → `update()` method
-- Loop behaviour → `TransportClock` in `Source/TransportClock.cpp`
+| Input | Action |
+|-------|--------|
+| **E** | Toggle edit mode |
+| **RMB click** (edit mode) | Open block edit popup on clicked block |
 
-### Sidebar (block list)
-**`Source/SidebarComponent.cpp`**
-- Row height, font size → `kRowH`, `kHeaderH` constants
-- Collapsed width → `MainComponent::resized()` in `Source/MainComponent.cpp`
+The edit popup shows:
+- **Block type** (read-only)
+- **Start time** and **Duration** (editable)
+- **Sound dropdown** (for Violin/Piano/Drum — choose from available presets)
+- **Browse button** (for Custom blocks — pick a `.wav` file from disk)
 
-### Transport bar (Play/Pause/Stop)
-**`Source/TransportBarComponent.cpp`**
-- Button appearance / labels → constructor
-- Progress bar colours → `paint()` gradient colours
-- Auto-stop behaviour → `timerCallback()` in `Source/MainComponent.cpp`
+### Playback
 
-### Block edit popup
-**`Source/BlockEditPopup.cpp` / `Source/BlockEditPopup.h`**
-- Fields shown (start time, duration, sound ID) → `showAt()` and `commit()`
-- Popup size → `kWidth` / `kHeight` constants in the header
+| Input | Action |
+|-------|--------|
+| **Play button** | Start transport playback |
+| **Pause button** | Pause playback |
+| **Stop button** | Stop and reset to beginning |
 
-### Layout
-**`Source/MainComponent.cpp`**
-- Sidebar width (collapsed vs expanded) → `resized()`
-- Transport bar height → `TransportBarComponent::kHeight` in the header
+Spatial audio is position-based:
+- **X axis** → stereo pan (left/right)
+- **Y axis** → pitch shift (higher = higher pitch)
+- **Z axis** → volume/proximity (closer to origin = louder)
 
 ---
 
@@ -122,23 +111,26 @@ This section maps features to the files you need to edit.
 
 ```
 SIME/
-├── CMakeLists.txt          # Build config
-├── JUCE/                   # JUCE framework (cloned separately)
+├── CMakeLists.txt              # Build config
+├── JUCE/                       # JUCE framework (cloned separately)
 └── Source/
-    ├── Main.cpp                  # App entry point
-    ├── MainComponent.cpp/h       # Top-level layout (sidebar + viewport + transport)
-    ├── ViewPortComponent.cpp/h   # 3D OpenGL viewport, input handling, sequencer loop
-    ├── Renderer.cpp/h            # OpenGL batch renderer (voxels, grid, highlights)
-    ├── Camera.cpp/h              # First-person camera
-    ├── Raycaster.cpp/h           # DDA voxel raycasting
-    ├── VoxelGrid.h               # Sparse voxel data structure
-    ├── MathUtils.h               # Vec3i, Vec3f, Mat4
-    ├── AudioEngine.cpp/h         # JUCE audio playback engine
-    ├── SequencerEngine.cpp/h     # Block → audio event sequencer
-    ├── TransportClock.cpp/h      # Playback clock (play/pause/stop/loop)
-    ├── SidebarComponent.cpp/h    # Left-side block list panel
+    ├── Main.cpp                # App entry point
+    ├── MainComponent.cpp/h     # Top-level layout + block type toolbar
+    ├── ViewPortComponent.cpp/h # 3D viewport, input, placement, sequencer loop
+    ├── Renderer.cpp/h          # OpenGL renderer (per-block colored cubes, grid, highlights)
+    ├── Camera.cpp/h            # First-person camera
+    ├── Raycaster.cpp/h         # DDA voxel raycasting
+    ├── VoxelGrid.h             # Sparse voxel data structure
+    ├── MathUtils.h             # Vec3i, Vec3f, Mat4
+    ├── BlockType.h             # Block type enum (Violin, Piano, Drum, Custom)
+    ├── BlockEntry.h            # Block data model (type, position, timing, sound, file path)
+    ├── AudioEngine.cpp/h       # Audio playback + instrument/drum synthesis
+    ├── SequencerEngine.cpp/h   # Block → audio event sequencer
+    ├── SequencerEvent.h        # Event struct passed between sequencer and audio engine
+    ├── TransportClock.cpp/h    # Playback clock (play/pause/stop/loop)
+    ├── SidebarComponent.cpp/h  # Left-side block list panel
     ├── TransportBarComponent.cpp/h # Bottom play/pause/stop bar
-    └── BlockEditPopup.cpp/h      # Floating block edit dialog
+    └── BlockEditPopup.cpp/h    # Floating block edit dialog (type-aware)
 ```
 
 ---
