@@ -67,7 +67,6 @@ struct BlockEntry
         isPlaying = false;
         currentKeyframeIndex = 0;
         
-        // FIX: Clear and resize based on recorded movement
         triggeredKeyframes.clear();
         if (hasRecordedMovement && !recordedMovement.empty())
         {
