@@ -29,9 +29,10 @@ static Vec3f getBlockColor(BlockType type, int soundId)
 {
     switch (type)
     {
-        case BlockType::Violin: return { 0.85f, 0.22f, 0.18f };
-        case BlockType::Piano:  return { 0.25f, 0.45f, 0.90f };
-        case BlockType::Drum:   return { 0.22f, 0.78f, 0.32f };
+        case BlockType::Violin:   return { 0.85f, 0.22f, 0.18f };
+        case BlockType::Piano:    return { 0.25f, 0.45f, 0.90f };
+        case BlockType::Drum:     return { 0.22f, 0.78f, 0.32f };
+        case BlockType::Listener: return { 1.00f, 0.55f, 0.10f };  // orange
         case BlockType::Custom:
         {
             static const Vec3f kPalette[] = {
@@ -544,10 +545,36 @@ void ViewPortComponent::renderOpenGL()
                     DBG("Keyframe " << b.recordedMovement.size() 
                         << " at time " << relativeTime 
                         << " pos (" << b.pos.x << "," << b.pos.y << "," << b.pos.z << ")");
+
+                    // Re-trigger preview sound at the new position so pitch/pan update
+                    if (b.soundId >= 0)
+                    {
+                        SequencerEvent stopEv;
+                        stopEv.type        = SequencerEventType::Stop;
+                        stopEv.blockSerial = b.serial;
+                        stopEv.soundId     = b.soundId;
+
+                        SequencerEvent startEv;
+                        startEv.type           = SequencerEventType::Start;
+                        startEv.blockSerial    = b.serial;
+                        startEv.soundId        = b.soundId;
+                        startEv.triggerTimeSec = 0.0;
+                        startEv.blockX         = static_cast<float>(b.pos.x);
+                        startEv.blockY         = static_cast<float>(b.pos.y);
+                        startEv.blockZ         = static_cast<float>(b.pos.z);
+
+                        audioEngine.processEvents({ stopEv, startEv });
+                    }
                 }
                 break;
             }
         }
+    }
+
+    // ── Update HUD recording flag (read by paint() on message thread) ─────────
+    {
+        juce::ScopedLock lock(hud.lock);
+        hud.isRecording = (editMode && recordKeyHeld && recordingBlockSerial >= 0);
     }
 // ── HUD ─────────────────────────────────────────────────────────
     
@@ -593,8 +620,11 @@ void ViewPortComponent::renderOpenGL()
             info += "  SHIFT PLANE Y=" + juce::String(shiftPlaneY)
                 + "  (scroll to raise/lower)";
         }
+        else if (editMode && recordKeyHeld && recordingBlockSerial >= 0){
+            info += "  RECORDING MOVEMENT  (release mouse to finish)";
+        }
         else if (editMode){
-            info += "  EDIT MODE  Click a block to set time  |  E = Exit";
+            info += "  EDIT MODE  Click a block to set time  |  Alt+Click = Record movement  |  E = Exit";
         }
         else
             info += "  LMB=Place  RMB=Look/Remove  WASD = Move  Shift=AirPlace  E = Edit  C = Clear";
@@ -682,9 +712,11 @@ void ViewPortComponent::paint(juce::Graphics& g)
 {
     // ── HUD bar ───────────────────────────────────────────────────────────────
     juce::String txt;
+    bool isRec = false;
     {
         juce::ScopedLock lock(hud.lock);
-        txt = hud.text;
+        txt   = hud.text;
+        isRec = hud.isRecording;
     }
     if (txt.isNotEmpty())
     {
@@ -695,6 +727,28 @@ void ViewPortComponent::paint(juce::Graphics& g)
         g.setColour(juce::Colour(0xffdddddd));
         g.drawText(txt, 8, 3, getWidth() - 16, 18,
                    juce::Justification::centredLeft, true);
+    }
+
+    // ── Recording indicator (red dot + REC label) ─────────────────────────────
+    if (isRec)
+    {
+        // Semi-transparent dark pill behind the indicator
+        constexpr int kIndW = 70, kIndH = 24;
+        int indX = getWidth() - kIndW - 12;
+        int indY = 30;
+
+        g.setColour(juce::Colours::black.withAlpha(0.60f));
+        g.fillRoundedRectangle((float)indX, (float)indY, (float)kIndW, (float)kIndH, 6.f);
+
+        // Red dot
+        g.setColour(juce::Colour(0xffff2020));
+        g.fillEllipse((float)(indX + 8), (float)(indY + 6), 12.f, 12.f);
+
+        // "REC" label
+        g.setFont(juce::Font(13.f, juce::Font::bold));
+        g.setColour(juce::Colours::white);
+        g.drawText("REC", indX + 26, indY + 4, 36, 16,
+                   juce::Justification::centredLeft, false);
     }
 }
 
@@ -753,9 +807,8 @@ void ViewPortComponent::mouseDown(const juce::MouseEvent& e)
             }
         }
  
-        // Clicked empty space — deselect
+        // Clicked empty space — deselect and fall through to start camera drag
         selectedSerial = -1;
-        return;   // don't place while in edit mode
     }
 
     // ── RMB: start look drag ──────────────────────────────────────────────────
@@ -801,26 +854,46 @@ void ViewPortComponent::mouseDown(const juce::MouseEvent& e)
  
         if (hit.hit)
         {
-            DBG("Hit voxel at (" << hit.voxelPos.x << "," << hit.voxelPos.y << "," << hit.voxelPos.z << ")");
+            DBG("Alt+LMB hit voxel at (" << hit.voxelPos.x << "," << hit.voxelPos.y << "," << hit.voxelPos.z << ")");
             
             for (auto& b : blockList)
             {
                 if (b.pos == hit.voxelPos)
                 {
                     selectedSerial = b.serial;
-                    dragStartPos = b.pos;
-                    recordKeyHeld = true;  // Start recording immediately
-                    
-                    // Start recording
-                    b.isRecordingMovement = true;
-                    b.recordingStartTime = juce::Time::getMillisecondCounterHiRes() * 0.001;
-                    b.recordingStartPos = b.pos;
-                    b.recordedMovement.clear();
-                    recordingBlockSerial = b.serial;
-                    
-                    // Add initial keyframe (fix: MovementKeyframe not MovementKeyFrame)
-                    b.recordedMovement.push_back(MovementKeyFrame{ 0.0, b.pos});
-                    DBG("Started recording movement for block " << b.serial);
+                    dragStartPos   = b.pos;
+                    recordKeyHeld  = true;
+
+                    if (!b.isRecordingMovement)
+                    {
+                        // ── Start recording ───────────────────────────────────
+                        b.isRecordingMovement = true;
+                        b.recordingStartTime  = juce::Time::getMillisecondCounterHiRes() * 0.001;
+                        b.recordingStartPos   = b.pos;
+                        b.recordedMovement.clear();
+                        recordingBlockSerial  = b.serial;
+
+                        // Initial keyframe at t=0
+                        b.recordedMovement.push_back(MovementKeyFrame{ 0.0, b.pos });
+                        DBG("Started recording movement for block " << b.serial);
+
+                        // Trigger a repaint so the REC indicator appears right away
+                        juce::MessageManager::callAsync([this]() { repaint(); });
+
+                        // ── Play preview sound so user can hear the block ─────
+                        if (b.soundId >= 0)
+                        {
+                            SequencerEvent startEv;
+                            startEv.type           = SequencerEventType::Start;
+                            startEv.blockSerial    = b.serial;
+                            startEv.soundId        = b.soundId;
+                            startEv.triggerTimeSec = 0.0;
+                            startEv.blockX         = static_cast<float>(b.pos.x);
+                            startEv.blockY         = static_cast<float>(b.pos.y);
+                            startEv.blockZ         = static_cast<float>(b.pos.z);
+                            audioEngine.processEvents({ startEv });
+                        }
+                    }
                     return;
                 }
             }
@@ -880,6 +953,15 @@ void ViewPortComponent::mouseUp(const juce::MouseEvent& e)
                     DBG("Recording ended. Duration: " << recordedDuration 
                         << ", Keyframes: " << b.recordedMovement.size());
                     
+                    // Stop the preview sound that was playing during recording
+                    {
+                        SequencerEvent stopEv;
+                        stopEv.type        = SequencerEventType::Stop;
+                        stopEv.blockSerial = b.serial;
+                        stopEv.soundId     = b.soundId;
+                        audioEngine.processEvents({ stopEv });
+                    }
+
                     if (b.recordedMovement.size() > 1)  // Need at least 2 keyframes
                     {
                         b.isRecordingMovement = false;
@@ -889,7 +971,6 @@ void ViewPortComponent::mouseUp(const juce::MouseEvent& e)
                         {
                             auto mousePos = getMouseXYRelative();
                             onRequestMovementConfirm(b.serial, recordedDuration, b.recordedMovement, mousePos);
-
                         }
                     }
                     else
@@ -904,6 +985,17 @@ void ViewPortComponent::mouseUp(const juce::MouseEvent& e)
                 }
             }
         }
+
+        // Bug 1 fix: always restore cursor, regardless of whether recording succeeded.
+        // The early return below would bypass the wasRight cursor-restore block.
+        {
+            juce::ScopedLock lock(mouseMutex);
+            mouse.rightDown = false;
+        }
+        setMouseCursor(juce::MouseCursor::NormalCursor);
+
+        // Clear the REC indicator on the message thread
+        juce::MessageManager::callAsync([this]() { repaint(); });
         return;
     }
     // Check our own rightDown flag — JUCE clears button from mods before mouseUp fires.
@@ -1147,31 +1239,11 @@ bool ViewPortComponent::keyPressed(const juce::KeyPress& k)
 
     if (k.getModifiers().isAltDown())
     {
+        // Only set the flag; actual recording starts on Alt+LMB mouseDown
+        // so we know which block the user clicked on before starting.
         if (editMode && selectedSerial >= 0)
-        {
             recordKeyHeld = true;
-            
-            for (auto& b : blockList)
-            {
-                if (b.serial == selectedSerial)
-                {
-                    if (!b.isRecordingMovement)
-                    {
-                        // Start recording
-                        b.isRecordingMovement = true;
-                        b.recordingStartTime = juce::Time::getMillisecondCounterHiRes() * 0.001;
-                        b.recordingStartPos = b.pos;
-                        b.recordedMovement.clear();
-                        recordingBlockSerial = b.serial;
-                        
-                        // Add initial keyframe 
-                        b.recordedMovement.push_back(MovementKeyFrame{ 0.0, b.pos });
-                        DBG("Started recording movement for block " << b.serial);
-                    }
-                    break;
-                }
-            }
-        }
+
         return true;
     }
 

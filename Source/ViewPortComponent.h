@@ -70,7 +70,11 @@ public:
             if (b.serial == serial)
             {
                 b.startTimeSec = startTime;
-                b.durationSec  = duration;
+
+                // durationLocked means the duration is tied to a recorded movement
+                // path — editing it here would desync the keyframe timing.
+                if (!b.durationLocked)
+                    b.durationSec = duration;
 
                 if (b.blockType == BlockType::Custom && customFile.isNotEmpty())
                 {
@@ -274,6 +278,7 @@ private:
     {
         juce::String     text;
         juce::Point<int> pos { 8, 3 };
+        bool             isRecording = false;  ///< True while movement recording is active
         juce::CriticalSection lock;
     } hud;
 

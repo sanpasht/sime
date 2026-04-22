@@ -24,10 +24,11 @@ private:
     bool isSidebarCollapsed = false;
 
     // ── Block type toolbar ────────────────────────────────────────────────────
-    juce::TextButton violinBtn { "Violin" };
-    juce::TextButton pianoBtn  { "Piano"  };
-    juce::TextButton drumBtn   { "Drum"   };
-    juce::TextButton customBtn { "Custom" };
+    juce::TextButton violinBtn   { "Violin"   };
+    juce::TextButton pianoBtn    { "Piano"    };
+    juce::TextButton drumBtn     { "Drum"     };
+    juce::TextButton customBtn   { "Custom"   };
+    juce::TextButton listenerBtn { "Listener" };
     BlockType activeType_ = BlockType::Violin;
     void setActiveBlockType(BlockType t);
     void refreshToolbarColors();

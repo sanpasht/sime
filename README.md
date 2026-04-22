@@ -1,7 +1,23 @@
-# SIME
+# SIME — Spatially-Interpreted Music Engine
 
 A 3D voxel-based spatial audio sequencer built with JUCE and OpenGL 3.3.  
-Place blocks in 3D space, assign sounds and timing to them, and play back a spatial audio sequence.
+Place blocks in 3D space, assign sounds and timing to them, and play back a spatial audio composition where position directly shapes how everything sounds.
+
+Move a block left or right and the audio pans. Place it higher and the pitch goes up. Push it further out on Z and it gets quieter. The goal is to make music composition spatial and visual instead of the traditional flat timeline.
+
+---
+
+## Table of Contents
+
+1. [Building from Source](#building-from-source)
+2. [Running the App](#running-the-app)
+3. [Controls](#controls)
+4. [Workflow](#workflow)
+5. [Block Movement Recording](#block-movement-recording)
+6. [Audio Architecture](#audio-architecture)
+7. [Project Structure](#project-structure)
+8. [Where to Change Things](#where-to-change-things)
+9. [Known Bugs & Issues](#known-bugs--issues)
 
 ---
 
@@ -35,86 +51,190 @@ The executable will be at:
 build\SIME_artefacts\Release\SIME.exe
 ```
 
-> **Note:** If CMake reports a generator mismatch, delete the `build/` folder and re-run the cmake configure step.
+> **Note:** If CMake reports a generator mismatch, delete the `build/` folder and re-run the configure step.
+
+---
+
+## Running the App
+
+From `C:\sime` in a terminal (e.g. Cursor):
+
+```powershell
+# One-time: clone JUCE if the folder is missing
+git clone https://github.com/juce-framework/JUCE.git JUCE
+
+# Configure
+cmake -B build -G "Visual Studio 17 2022"
+
+# Build
+cmake --build build --config Debug --parallel
+
+# Run
+.\build\SIME_artefacts\Debug\SIME.exe
+```
+
+If `cmake` is not found, add `C:\Program Files\CMake\bin` to PATH and reopen your terminal.
 
 ---
 
 ## Controls
 
+### Camera
+
 | Input | Action |
 |-------|--------|
-| **LMB click** | Place a voxel block |
-| **RMB drag** | Rotate camera (look around) |
-| **WASD** | Move camera horizontally |
-| **Space** | Move camera up |
-| **Ctrl** | Move camera down |
-| **Shift + LMB** | Place block in mid-air on the shift plane |
-| **Scroll wheel** (Shift held) | Raise / lower the shift plane Y level |
-| **Scroll wheel** | Camera zoom |
-| **E** | Toggle edit mode (click blocks to set timing/sound) |
-| **R** | Reset camera to default position |
-| **C** | Clear all blocks |
-| **Delete / Backspace** | Remove currently hovered block |
+| `RMB + drag` | Rotate camera (look around) |
+| `W / S` | Move forward / back |
+| `A / D` | Strafe left / right |
+| `Space` | Move up |
+| `Ctrl` | Move down |
+| `Scroll wheel` | Zoom / dolly |
+| `R` | Reset camera to `(8, 8, 8)` |
+
+> Click inside the viewport first to give it keyboard focus.
+
+### Voxel Interaction
+
+| Input | Action |
+|-------|--------|
+| `LMB` | Place block at preview position |
+| `RMB click` (no drag) | Remove hovered block |
+| `Backspace` | Remove hovered block |
+| `C` | Clear all blocks |
+| `Shift + LMB` | Place block in mid-air (shift plane) |
+| `Shift + Scroll` | Raise / lower the shift plane Y level |
+
+### Edit Mode & Transport
+
+| Input | Action |
+|-------|--------|
+| `E` | Toggle edit mode |
+| `RMB` on block (edit mode) | Open block edit popup |
+| `Alt + LMB` on block (edit mode) | Select block and start movement recording |
+| Play / Pause / Stop | Transport bar buttons at the bottom |
 
 ---
 
-## Where to Change Things
+## Workflow
 
-This section maps features to the files you need to edit.
+**Quick start:**
 
-### Camera behaviour
-**`Source/Camera.cpp` / `Source/Camera.h`**
-- Movement speed → `moveSpeed` in `Camera.h`
-- Look sensitivity → `lookSpeed` in `Camera.h`
-- Field of view → `fovY` in `Camera.h`
-- Floor clamp (minimum Y) → `moveUp()` in `Camera.cpp`
-- Near/far clip planes → `nearZ` / `farZ` in `Camera.h`
+1. Launch the app and click the viewport to focus it.
+2. Fly the camera with `RMB drag` + `WASD`.
+3. Place blocks with `LMB`. Use `Shift + LMB` to place blocks in mid-air.
+4. Press `E` to enter edit mode.
+5. `RMB`-click any block to set its **Start time**, **Duration**, and **Sound** in the popup.
+6. Press **Play** in the transport bar.
+7. Blocks highlight as they trigger. Listen for spatial differences — left/right panning, pitch changes by height, volume falloff by depth.
 
-### Block placement & raycasting
-**`Source/ViewPortComponent.cpp`**
-- How blocks are placed (normal, shift-plane, ground fallback) → `renderOpenGL()` place section
-- Shift-plane anchor logic → `shiftAnchorSet` block inside `renderOpenGL()`
-- Raycast distance / max steps → `Raycaster::MAX_STEPS` / `MAX_DIST` in `Source/Raycaster.h`
-- Block outline colours (green = preview, yellow = hover, cyan = shift, orange = selected) → `renderHighlight()` calls in `renderOpenGL()`
+**Spatial audio mapping:**
 
-### Rendering & visuals
-**`Source/Renderer.cpp` / `Source/Renderer.h`**
-- Voxel colour → `glUniform3f(uColor_v, ...)` in `render()`
-- Grid size → `buildGridMesh(halfSize)` — change the `40` argument in `init()`
-- Origin marker colour → `renderOriginMarker()` in `Renderer.cpp`
-- Lighting direction → `lightDir` in `renderOpenGL()` in `ViewPortComponent.cpp`
+| Axis | Effect |
+|------|--------|
+| X (left/right) | Stereo pan (equal-power) |
+| Y (up/down) | Pitch — each grid unit = one semitone up |
+| Z (near/far) | Volume — inverse distance falloff |
 
-### Audio
-**`Source/AudioEngine.cpp` / `Source/AudioEngine.h`**
-- Load a sound file → `audioEngine.loadSample(soundId, juce::File("path/to/file.wav"))` in `ViewPortComponent` constructor
-- Voice gain → `voice.gain` in `handleStartEvent()`
-- Max polyphony → `activeVoices_` size (currently unlimited; add a cap in `handleStartEvent()`)
+**Block types:**
 
-### Sequencer / timing
-**`Source/SequencerEngine.cpp`**
-- How block start/stop events are fired → `update()` method
-- Loop behaviour → `TransportClock` in `Source/TransportClock.cpp`
+| Type | Color | Sound |
+|------|-------|-------|
+| Violin | Red | Vibrato + harmonics, sustained |
+| Piano | Blue | Sharp attack, exponential decay |
+| Drum | Green | Kick / snare / hi-hat (selectable) |
+| Custom | White/varies | User-loaded WAV file |
+| Listener | Orange | Defines the spatial listening position |
 
-### Sidebar (block list)
-**`Source/SidebarComponent.cpp`**
-- Row height, font size → `kRowH`, `kHeaderH` constants
-- Collapsed width → `MainComponent::resized()` in `Source/MainComponent.cpp`
+---
 
-### Transport bar (Play/Pause/Stop)
-**`Source/TransportBarComponent.cpp`**
-- Button appearance / labels → constructor
-- Progress bar colours → `paint()` gradient colours
-- Auto-stop behaviour → `timerCallback()` in `Source/MainComponent.cpp`
+## Block Movement Recording
 
-### Block edit popup
-**`Source/BlockEditPopup.cpp` / `Source/BlockEditPopup.h`**
-- Fields shown (start time, duration, sound ID) → `showAt()` and `commit()`
-- Popup size → `kWidth` / `kHeight` constants in the header
+Blocks can have a recorded movement path that plays back in sync with the transport.
 
-### Layout
-**`Source/MainComponent.cpp`**
-- Sidebar width (collapsed vs expanded) → `resized()`
-- Transport bar height → `TransportBarComponent::kHeight` in the header
+### How to Record
+
+**Step 1 — Enter edit mode**
+Press `E`. The HUD shows `EDIT MODE` and all blocks get a dim yellow highlight.
+
+**Step 2 — Select a block**
+Hold `Alt` and `LMB`-click the block you want to record. The block highlights orange and recording starts immediately. A red **● REC** indicator appears in the top-right corner of the viewport, and you will hear the block's sound playing as a preview.
+
+**Step 3 — Record movement**
+Keep `Alt` held and drag the mouse. The block follows the cursor and snaps to the grid. Keyframes are captured automatically each time the block moves to a new position. The preview sound re-triggers with updated pitch and pan as the block moves, so you can hear the spatial result in real time.
+
+**Step 4 — Stop recording**
+Release the mouse button. The **● REC** indicator disappears and a confirmation popup appears showing:
+- Block serial number and total duration
+- Number of keyframes captured
+- A top-down path visualization (cyan line, green→red keyframe dots, Y-level annotations, START/END labels)
+
+**Step 5 — Confirm or cancel**
+- **Confirm** — movement is saved, duration is locked to match the path timing.
+- **Cancel** — movement is discarded, block resets.
+
+**Step 6 — Play it back**
+Press `E` to exit edit mode, then press **Play**. The block will travel through its recorded positions in sync with the transport clock.
+
+### Important Notes
+
+- **Duration locking** — after confirming a recording, the block's duration is locked and cannot be edited in the popup. This keeps keyframe timing in sync.
+- **Start time is still editable** — the entire movement path shifts with it; relative timing stays intact.
+- **Movement constraints** — positions must be valid grid cells, within ±40 on X/Z, Y ≥ 0, not occupied by another block, and not the origin `(0,0,0)`.
+
+---
+
+## Audio Architecture
+
+### Component Overview
+
+```
+Transport clock advances each frame
+        │
+        ▼
+SequencerEngine.update(clock, blockList)
+        │  scans all blocks, fires Start/Stop/Movement events
+        ▼
+AudioEngine.processEvents(events)
+        │  queues into lock-free FIFO (256 capacity)
+        ▼
+Audio callback thread drains FIFO
+        │  mixes active voices into output buffer
+        ▼
+Speaker output
+```
+
+### Core Components
+
+**`TransportClock`** — owns playback time. Methods: `start()`, `pause()`, `stop()`, `seek()`, `setLoop()`, `update(dt)`.
+
+**`SequencerEngine`** — scans all blocks each frame and emits `Start`, `Stop`, and `Movement` events when blocks cross timing boundaries or keyframe positions.
+
+**`AudioEngine`** — receives events via a `juce::AbstractFifo`-backed queue. Maintains a flat list of `ActiveVoice` instances, each with a sample read cursor, gain, pitch rate, and stereo pan. Runs mixing in the audio callback — no allocations, no locks.
+
+**`BlockEntry`** — the shared data structure. Carries position, block type, sound ID, start/duration timing, playback state flags, and an optional recorded movement path (`std::vector<MovementKeyFrame>`).
+
+### Threading Model
+
+| Thread | Owns |
+|--------|------|
+| GL / render thread | `blockList`, `SequencerEngine`, `TransportClock`, raycasting |
+| Audio thread | `activeVoices_`, mixing |
+| Message thread | Mouse/keyboard input, UI callbacks |
+
+Events flow from the GL thread → FIFO → audio thread. The FIFO is the only cross-thread boundary in the hot path.
+
+### Synthesized Sounds
+
+All sounds are generated procedurally at startup (no external files required for defaults):
+
+| Sound | Method |
+|-------|--------|
+| Violin | Vibrato + harmonics, sustained amplitude envelope |
+| Piano | Sharp attack, exponential decay, rich overtones |
+| Kick drum | Pitch-dropping sine (150→50 Hz) + click transient |
+| Snare | Low tone + noise burst |
+| Hi-hat | High-frequency filtered noise, very short |
+| Custom | User-supplied WAV loaded via `AudioEngine::loadSample()` |
 
 ---
 
@@ -122,29 +242,125 @@ This section maps features to the files you need to edit.
 
 ```
 SIME/
-├── CMakeLists.txt          # Build config
-├── JUCE/                   # JUCE framework (cloned separately)
+├── CMakeLists.txt
+├── JUCE/                          # JUCE framework (cloned separately)
 └── Source/
-    ├── Main.cpp                  # App entry point
-    ├── MainComponent.cpp/h       # Top-level layout (sidebar + viewport + transport)
-    ├── ViewPortComponent.cpp/h   # 3D OpenGL viewport, input handling, sequencer loop
-    ├── Renderer.cpp/h            # OpenGL batch renderer (voxels, grid, highlights)
-    ├── Camera.cpp/h              # First-person camera
-    ├── Raycaster.cpp/h           # DDA voxel raycasting
-    ├── VoxelGrid.h               # Sparse voxel data structure
-    ├── MathUtils.h               # Vec3i, Vec3f, Mat4
-    ├── AudioEngine.cpp/h         # JUCE audio playback engine
-    ├── SequencerEngine.cpp/h     # Block → audio event sequencer
-    ├── TransportClock.cpp/h      # Playback clock (play/pause/stop/loop)
-    ├── SidebarComponent.cpp/h    # Left-side block list panel
+    ├── Main.cpp                   # App entry point
+    ├── MainComponent.cpp/h        # Top-level layout (sidebar + viewport + transport)
+    ├── ViewPortComponent.cpp/h    # 3D OpenGL viewport, input, sequencer loop
+    ├── Renderer.cpp/h             # OpenGL batch renderer (blocks, grid, highlights)
+    ├── Camera.cpp/h               # First-person camera
+    ├── Raycaster.cpp/h            # DDA voxel raycasting
+    ├── VoxelGrid.h                # Sparse voxel data structure
+    ├── MathUtils.h                # Vec3i, Vec3f, Mat4
+    ├── BlockEntry.h               # Shared block data struct
+    ├── BlockType.h                # Block type enum + helpers
+    ├── SequencerEvent.h           # Event value type (Start/Stop/Movement)
+    ├── AudioEngine.cpp/h          # JUCE audio playback engine
+    ├── SequencerEngine.cpp/h      # Block → audio event sequencer
+    ├── TransportClock.cpp/h       # Playback clock
+    ├── SidebarComponent.cpp/h     # Left-side block list panel
     ├── TransportBarComponent.cpp/h # Bottom play/pause/stop bar
-    └── BlockEditPopup.cpp/h      # Floating block edit dialog
+    ├── BlockEditPopup.cpp/h       # Floating block edit dialog
+    └── MovementConfirmPopup.h     # Movement recording confirm dialog
 ```
 
 ---
 
-## Contributing
+## Where to Change Things
 
-1. Fork the repo and create a branch from `main`
-2. Make your changes
-3. Open a pull request with a clear description of what changed and why
+### Camera
+**`Camera.cpp` / `Camera.h`**
+- Movement speed → `moveSpeed`
+- Look sensitivity → `lookSpeed`
+- Field of view → `fovY`
+- Near/far clip → `nearZ` / `farZ`
+
+### Block Placement & Raycasting
+**`ViewPortComponent.cpp`**
+- Placement logic (normal, shift-plane, ground fallback) → `renderOpenGL()` place section
+- Shift-plane anchor → `shiftAnchorSet` block
+- Raycast distance → `Raycaster::MAX_STEPS` / `MAX_DIST` in `Raycaster.h`
+- Block highlight colours → `renderHighlight()` calls in `renderOpenGL()`
+
+### Rendering
+**`Renderer.cpp`**
+- Block colours → `getBlockColor()` in `ViewPortComponent.cpp`
+- Grid size → `buildGridMesh(40)` — change the `40` argument
+- Lighting direction → `lightDir` in `renderOpenGL()`
+
+### Audio
+**`AudioEngine.cpp`**
+- Load a custom sound → `audioEngine.loadSample(soundId, juce::File("path/to/file.wav"))` in the `ViewPortComponent` constructor
+- Voice gain formula → `handleStartEvent()`
+- Pitch mapping → `voice.pitchRate` formula in `handleStartEvent()`
+- Pan law → `voice.leftGain` / `voice.rightGain` in `handleStartEvent()`
+
+### Sequencer / Timing
+**`SequencerEngine.cpp`**
+- Start/stop event logic → `update()`
+- Loop behaviour → `TransportClock.cpp`
+
+### Sidebar
+**`SidebarComponent.cpp`**
+- Row height, font size → `kRowH`, `kHeaderH`
+- Collapsed width → `MainComponent::resized()`
+
+### Transport Bar
+**`TransportBarComponent.cpp`**
+- Button appearance → constructor
+- Progress bar colours → `paint()` gradient
+- Auto-stop → `timerCallback()` in `MainComponent.cpp`
+
+### Block Edit Popup
+**`BlockEditPopup.cpp`**
+- Fields shown → `showAt()` and `commit()`
+- Popup size → `kWidth` / `kHeight`
+
+---
+
+## Known Bugs & Issues
+
+### Editor / Lint — Not Real Bugs
+
+All red-line errors in `AudioEngine.cpp` cascade from one root cause: Cursor's clangd linter can't find JUCE headers because they resolve through CMake, not standard include paths. The MSVC build compiles fine.
+
+To fix the editor cosmetics only, add `-DCMAKE_EXPORT_COMPILE_COMMANDS=ON` to the CMake configure step and point a `.clangd` file at the result.
+
+### Thread Safety
+
+| ID | Severity | Summary |
+|----|----------|---------|
+| T1 | High | `applyBlockEdit()` writes GL-thread-owned `blockList` from the message thread — unguarded data race |
+| T2 | Medium | `getTransportDuration()` iterates `blockList` from the 30Hz timer on the message thread |
+| T3 | Low–Med | Transport play/pause/stop called cross-thread on a non-thread-safe `TransportClock` |
+| T4 | Low | `hasHit` / `currentHit` read in `keyPressed()` without a lock |
+
+### Audio
+
+| ID | Severity | Summary |
+|----|----------|---------|
+| A1 | Low | Synth samples hardcoded at 44100 Hz; devices running at 48000 Hz will be ~9% sharp |
+| A2 | Low | `activeVoices_.push_back()` can allocate on the audio thread if >32 simultaneous voices |
+| A3 | Low | Brief voice overlap (one audio block) on rapid transport stop/start |
+
+### Sequencer
+
+| ID | Severity | Summary |
+|----|----------|---------|
+| S1 | Medium | All newly placed blocks default to `startTimeSec = 0.0` — everything fires at once until manually staggered |
+| S2 | Low | Pitch only goes up (Y ≥ 0); no way to pitch below normal |
+
+### UI
+
+| ID | Severity | Summary |
+|----|----------|---------|
+| U1 | Low | Two debug alert dialogs appear on every startup (leftover from development) |
+
+### Recommended Fix Order
+
+1. Remove debug startup alerts (U1) — trivial
+2. Thread-safe block edits (T1, T2) — highest crash risk; queue edits through the GL thread like placements already do
+3. Auto-stagger block start times (S1) — or at minimum, increment based on existing block end times
+4. Regenerate synth tones at the device's actual sample rate (A1)
+

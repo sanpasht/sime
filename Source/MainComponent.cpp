@@ -33,11 +33,13 @@ MainComponent::MainComponent()
     addAndMakeVisible(pianoBtn);
     addAndMakeVisible(drumBtn);
     addAndMakeVisible(customBtn);
+    addAndMakeVisible(listenerBtn);
 
-    violinBtn.onClick = [this] { setActiveBlockType(BlockType::Violin); };
-    pianoBtn .onClick = [this] { setActiveBlockType(BlockType::Piano);  };
-    drumBtn  .onClick = [this] { setActiveBlockType(BlockType::Drum);   };
-    customBtn.onClick = [this] { setActiveBlockType(BlockType::Custom); };
+    violinBtn  .onClick = [this] { setActiveBlockType(BlockType::Violin);   };
+    pianoBtn   .onClick = [this] { setActiveBlockType(BlockType::Piano);    };
+    drumBtn    .onClick = [this] { setActiveBlockType(BlockType::Drum);     };
+    customBtn  .onClick = [this] { setActiveBlockType(BlockType::Custom);   };
+    listenerBtn.onClick = [this] { setActiveBlockType(BlockType::Listener); };
 
     refreshToolbarColors();
 
@@ -95,7 +97,8 @@ void MainComponent::showMovementConfirmPopup(int serial,
     options.content.setOwned(popup);
     options.dialogTitle = "Confirm Movement Recording";
     options.dialogBackgroundColour = juce::Colour(0xff2a2a2a);
-    options.escapeKeyTriggersCloseButton = true;
+    options.escapeKeyTriggersCloseButton = false;  // Bug 5 fix: Escape would close without calling onCancel,
+                                                    // leaving recordingBlockSerial stale. Force explicit button click.
     options.useNativeTitleBar = false;
     options.resizable = false;
     
@@ -131,15 +134,17 @@ void MainComponent::refreshToolbarColors()
         }
     };
 
-    style(violinBtn, BlockType::Violin, juce::Colour(0xffc03528));
-    style(pianoBtn,  BlockType::Piano,  juce::Colour(0xff3366cc));
-    style(drumBtn,   BlockType::Drum,   juce::Colour(0xff2eaa44));
-    style(customBtn, BlockType::Custom, juce::Colour(0xff666688));
+    style(violinBtn,   BlockType::Violin,   juce::Colour(0xffc03528));
+    style(pianoBtn,    BlockType::Piano,    juce::Colour(0xff3366cc));
+    style(drumBtn,     BlockType::Drum,     juce::Colour(0xff2eaa44));
+    style(customBtn,   BlockType::Custom,   juce::Colour(0xff666688));
+    style(listenerBtn, BlockType::Listener, juce::Colour(0xffdd7010));  // orange
 
-    violinBtn.repaint();
-    pianoBtn .repaint();
-    drumBtn  .repaint();
-    customBtn.repaint();
+    violinBtn  .repaint();
+    pianoBtn   .repaint();
+    drumBtn    .repaint();
+    customBtn  .repaint();
+    listenerBtn.repaint();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -189,10 +194,11 @@ void MainComponent::resized()
     const int gap  = 4;
     int tx = toolbarArea.getX() + 8;
     int ty = toolbarArea.getY() + (kToolbarH - 26) / 2;
-    violinBtn.setBounds(tx, ty, btnW, 26);  tx += btnW + gap;
-    pianoBtn .setBounds(tx, ty, btnW, 26);  tx += btnW + gap;
-    drumBtn  .setBounds(tx, ty, btnW, 26);  tx += btnW + gap;
-    customBtn.setBounds(tx, ty, btnW, 26);
+    violinBtn  .setBounds(tx, ty, btnW, 26);  tx += btnW + gap;
+    pianoBtn   .setBounds(tx, ty, btnW, 26);  tx += btnW + gap;
+    drumBtn    .setBounds(tx, ty, btnW, 26);  tx += btnW + gap;
+    customBtn  .setBounds(tx, ty, btnW, 26);  tx += btnW + gap;
+    listenerBtn.setBounds(tx, ty, btnW, 26);
 
     // 3D viewport — whatever remains
     view.setBounds(area);
