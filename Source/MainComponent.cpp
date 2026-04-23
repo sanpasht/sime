@@ -3,6 +3,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 #include "MainComponent.h"
+#include "SceneFile.h"
 
 MainComponent::MainComponent()
 {
@@ -42,6 +43,18 @@ MainComponent::MainComponent()
     listenerBtn.onClick = [this] { setActiveBlockType(BlockType::Listener); };
 
     refreshToolbarColors();
+
+    // ── File toolbar ────────────────────────────────────────────────────────
+    for (auto* btn : { &newBtn, &openBtn, &saveBtn, &saveAsBtn })
+    {
+        addAndMakeVisible(*btn);
+        btn->setColour(juce::TextButton::buttonColourId,  juce::Colour(0xff1a1a2e));
+        btn->setColour(juce::TextButton::textColourOffId,  juce::Colour(0xffccccdd));
+    }
+    newBtn  .onClick = [this] { newScene();  };
+    openBtn .onClick = [this] { openScene(); };
+    saveBtn .onClick = [this] { saveScene(); };
+    saveAsBtn.onClick = [this] { currentFilePath_.clear(); saveScene(); };
 
     // ── Wire edit popup ───────────────────────────────────────────────────────
     view.onRequestBlockEdit = [this](int serial, BlockType type,
@@ -200,11 +213,128 @@ void MainComponent::resized()
     customBtn  .setBounds(tx, ty, btnW, 26);  tx += btnW + gap;
     listenerBtn.setBounds(tx, ty, btnW, 26);
 
+    // File toolbar — right side of toolbar row
+    const int fbtnW = 64;
+    int fx = toolbarArea.getRight() - 8 - (4 * (fbtnW + gap));
+    saveAsBtn.setBounds(fx + 3 * (fbtnW + gap), ty, fbtnW, 26);
+    saveBtn  .setBounds(fx + 2 * (fbtnW + gap), ty, fbtnW, 26);
+    openBtn  .setBounds(fx + 1 * (fbtnW + gap), ty, fbtnW, 26);
+    newBtn   .setBounds(fx,                      ty, fbtnW, 26);
+
     // 3D viewport — whatever remains
     view.setBounds(area);
 
     if (movementPopup)
     {
         movementPopup->toFront(false);  // Don't give it keyboard focus
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Scene persistence
+// ─────────────────────────────────────────────────────────────────────────────
+
+MainComponent::~MainComponent()
+{
+    autoSave();
+}
+
+void MainComponent::newScene()
+{
+    view.clearScene();
+    currentFilePath_.clear();
+}
+
+void MainComponent::saveScene(const juce::String& explicitPath)
+{
+    juce::String target = explicitPath.isNotEmpty() ? explicitPath : currentFilePath_;
+
+    if (target.isNotEmpty())
+    {
+        auto blocks = view.getBlockListCopy();
+        if (SceneFile::save(target.toStdString(), blocks))
+        {
+            currentFilePath_ = target;
+            DBG("Scene saved: " << target);
+        }
+        return;
+    }
+
+    fileChooser_ = std::make_unique<juce::FileChooser>(
+        "Save Scene",
+        juce::File::getSpecialLocation(juce::File::userDocumentsDirectory),
+        "*.sime");
+
+    fileChooser_->launchAsync(
+        juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles,
+        [this](const juce::FileChooser& fc)
+        {
+            auto result = fc.getResult();
+            if (result == juce::File{}) return;
+
+            juce::String path = result.getFullPathName();
+            if (!path.endsWithIgnoreCase(".sime"))
+                path += ".sime";
+
+            auto blocks = view.getBlockListCopy();
+            if (SceneFile::save(path.toStdString(), blocks))
+            {
+                currentFilePath_ = path;
+                DBG("Scene saved: " << path);
+            }
+        });
+}
+
+void MainComponent::openScene()
+{
+    fileChooser_ = std::make_unique<juce::FileChooser>(
+        "Open Scene",
+        juce::File::getSpecialLocation(juce::File::userDocumentsDirectory),
+        "*.sime");
+
+    fileChooser_->launchAsync(
+        juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+        [this](const juce::FileChooser& fc)
+        {
+            auto result = fc.getResult();
+            if (result == juce::File{}) return;
+
+            juce::String path = result.getFullPathName();
+            std::vector<BlockEntry> loaded;
+            if (SceneFile::load(path.toStdString(), loaded))
+            {
+                view.loadScene(std::move(loaded));
+                currentFilePath_ = path;
+                DBG("Scene loaded: " << path << "  (" << (int)view.getBlockListCopy().size() << " blocks)");
+            }
+            else
+            {
+                juce::AlertWindow::showMessageBoxAsync(
+                    juce::MessageBoxIconType::WarningIcon,
+                    "Load Error",
+                    "Could not open \"" + result.getFileName() + "\".\nThe file may be corrupted or an unsupported version.");
+            }
+        });
+}
+
+void MainComponent::autoSave()
+{
+    auto appData = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
+                       .getChildFile("SIME");
+    appData.createDirectory();
+
+    auto target = appData.getChildFile("autosave.sime");
+    auto blocks = view.getBlockListCopy();
+    if (!blocks.empty())
+        SceneFile::save(target.getFullPathName().toStdString(), blocks);
+}
+
+void MainComponent::loadSceneFromFile(const juce::String& path)
+{
+    std::vector<BlockEntry> loaded;
+    if (SceneFile::load(path.toStdString(), loaded))
+    {
+        view.loadScene(std::move(loaded));
+        currentFilePath_ = path;
     }
 }

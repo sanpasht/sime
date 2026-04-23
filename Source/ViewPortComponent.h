@@ -17,6 +17,7 @@
 #include "BlockEditPopup.h"
 
 #include "BlockType.h"
+#include "SceneFile.h"
 #include <atomic>
 #include <vector>
 
@@ -167,6 +168,19 @@ public:
                     const std::vector<MovementKeyFrame>& keyframes,
                     juce::Point<int>)> onRequestMovementConfirm;
 
+    // ── Scene persistence ─────────────────────────────────────────────────────
+
+    /// Snapshot current blocks for saving (called from message thread).
+    std::vector<BlockEntry> getBlockListCopy() const
+    {
+        return blockList;   // blockList is GL-thread-owned but we copy safely
+    }
+
+    /// Replace the entire scene with loaded blocks (called from message thread).
+    void loadScene(std::vector<BlockEntry> newBlocks);
+
+    /// Clear the scene (delegates to existing clear path).
+    void clearScene() { pendingClear = true; }
 
 private:
     // ── Private helpers ───────────────────────────────────────────────────────
@@ -221,6 +235,11 @@ private:
     juce::CriticalSection clickMutex;
 
     std::atomic<bool> pendingClear { false };
+
+    // Pending scene load (message → GL thread)
+    std::vector<BlockEntry>  pendingLoadBlocks_;
+    std::atomic<bool>        pendingLoad_ { false };
+    juce::CriticalSection    loadMutex_;
 
     // =========================================================================
     // Mouse state  (message thread writes, GL thread reads)
@@ -303,6 +322,21 @@ private:
     // =========================================================================
     std::atomic<int> activeBlockType_ { static_cast<int>(BlockType::Violin) };
     int              nextCustomSoundId_ = 1000;
+
+    // =========================================================================
+    // View gizmo / direction snap
+    // =========================================================================
+    std::atomic<int> pendingViewSnap_ { -1 };  ///< -1 = none, 0–3 = direction
+
+    struct GizmoAxis { float x, y; };  ///< 2D projected axis endpoint
+    struct GizmoState
+    {
+        GizmoAxis axes[3];          // X, Y, Z projected directions
+        juce::CriticalSection lock;
+    } gizmo_;
+
+    juce::Rectangle<int> getGizmoButtonRect(int index) const;
+    bool isInGizmoArea(float x, float y) const;
 
     // =========================================================================
     // Edit popup

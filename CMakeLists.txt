@@ -27,6 +27,7 @@ target_sources(SIME PRIVATE
     Source/TransportClock.cpp
     Source/Blockeditpopup.cpp
     Source/TransportBarComponent.cpp
+    Source/SceneFile.cpp
 )
 
 target_compile_definitions(SIME PRIVATE

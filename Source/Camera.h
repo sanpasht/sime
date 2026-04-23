@@ -41,6 +41,13 @@ public:
 
     void setPosition(const Vec3f& pos) { position = pos; }
 
+    /// Orient the camera toward a target point (sets yaw + pitch).
+    void lookAtTarget(const Vec3f& target);
+
+    /// Snap to a preset view direction looking at origin.
+    /// 0=Front (+Z), 1=Back (-Z), 2=Left (-X), 3=Right (+X)
+    void snapToView(int direction, float distance = 15.f);
+
     // ── Accessors ─────────────────────────────────────────────────────────────
 
     Vec3f getPosition() const { return position; }

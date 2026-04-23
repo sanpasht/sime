@@ -86,6 +86,37 @@ void Camera::moveUp(float delta)
         position.y = 0.1f;
 }
 
+// ── Target tracking ──────────────────────────────────────────────────────────
+
+void Camera::lookAtTarget(const Vec3f& target)
+{
+    Vec3f dir = target - position;
+    float horizLen = std::sqrt(dir.x * dir.x + dir.z * dir.z);
+
+    yaw   = std::atan2(dir.x, -dir.z);
+    pitch = std::atan2(dir.y, horizLen);
+
+    constexpr float kMaxPitch = kHalfPi * 0.995f;
+    pitch = std::clamp(pitch, -kMaxPitch, kMaxPitch);
+}
+
+void Camera::snapToView(int direction, float distance)
+{
+    const float height = distance * 0.35f;
+    const Vec3f origin { 0.f, 0.f, 0.f };
+
+    switch (direction)
+    {
+        case 0: position = { 0.f, height, distance };  break;  // Front: from +Z
+        case 1: position = { 0.f, height, -distance }; break;  // Back:  from -Z
+        case 2: position = { -distance, height, 0.f };  break;  // Left:  from -X
+        case 3: position = { distance, height, 0.f };   break;  // Right: from +X
+        default: return;
+    }
+
+    lookAtTarget(origin);
+}
+
 // ── Matrix generation ─────────────────────────────────────────────────────────
 
 Mat4 Camera::getViewMatrix() const

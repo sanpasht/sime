@@ -91,6 +91,26 @@ ViewPortComponent::~ViewPortComponent()
     audioEngine.stop();
 }
 
+void ViewPortComponent::loadScene(std::vector<BlockEntry> newBlocks)
+{
+    // Re-register custom WAV samples so the audio engine knows them
+    for (auto& b : newBlocks)
+    {
+        if (b.blockType == BlockType::Custom && !b.customFilePath.empty())
+        {
+            juce::File wav(b.customFilePath);
+            if (wav.existsAsFile() && !audioEngine.hasSample(b.soundId))
+                audioEngine.loadSample(b.soundId, wav);
+        }
+    }
+
+    {
+        juce::ScopedLock lock(loadMutex_);
+        pendingLoadBlocks_ = std::move(newBlocks);
+    }
+    pendingLoad_ = true;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // GL callbacks
 // ─────────────────────────────────────────────────────────────────────────────
@@ -147,6 +167,38 @@ void ViewPortComponent::renderOpenGL()
         {
             if (sidebar != nullptr)
                 sidebar->setBlocks({});
+        });
+    }
+
+    // ── Load scene from file ────────────────────────────────────────────────
+    if (pendingLoad_.exchange(false))
+    {
+        voxelGrid.clear();
+        blockList.clear();
+
+        {
+            juce::ScopedLock lock(loadMutex_);
+            blockList = std::move(pendingLoadBlocks_);
+        }
+
+        int maxSerial = 0;
+        for (const auto& b : blockList)
+        {
+            voxelGrid.add(b.pos);
+            if (b.serial > maxSerial) maxSerial = b.serial;
+        }
+        nextSerial = maxSerial + 1;
+        renderer.meshDirty = true;
+
+        std::vector<SidebarComponent::BlockEntry> uiBlocks;
+        uiBlocks.reserve(blockList.size());
+        for (const auto& e : blockList)
+            uiBlocks.push_back({ e.serial, e.pos });
+
+        juce::MessageManager::callAsync([this, uiBlocks]()
+        {
+            if (sidebar != nullptr)
+                sidebar->setBlocks(uiBlocks);
         });
     }
 
@@ -571,6 +623,28 @@ void ViewPortComponent::renderOpenGL()
         }
     }
 
+    // ── Process view snap request ───────────────────────────────────────────────
+    {
+        int snapDir = pendingViewSnap_.exchange(-1);
+        if (snapDir >= 0)
+            camera.snapToView(snapDir);
+    }
+
+    // ── Update gizmo axis projections for paint() ────────────────────────────
+    {
+        Vec3f fwd = camera.getForward();
+        Vec3f rgt = camera.getRight();
+        Vec3f up  = rgt.cross(fwd).normalized();
+
+        juce::ScopedLock lock(gizmo_.lock);
+        // X axis (1,0,0)
+        gizmo_.axes[0] = { rgt.x, -up.x };
+        // Y axis (0,1,0)
+        gizmo_.axes[1] = { rgt.y, -up.y };
+        // Z axis (0,0,1)
+        gizmo_.axes[2] = { rgt.z, -up.z };
+    }
+
     // ── Update HUD recording flag (read by paint() on message thread) ─────────
     {
         juce::ScopedLock lock(hud.lock);
@@ -732,7 +806,6 @@ void ViewPortComponent::paint(juce::Graphics& g)
     // ── Recording indicator (red dot + REC label) ─────────────────────────────
     if (isRec)
     {
-        // Semi-transparent dark pill behind the indicator
         constexpr int kIndW = 70, kIndH = 24;
         int indX = getWidth() - kIndW - 12;
         int indY = 30;
@@ -740,16 +813,124 @@ void ViewPortComponent::paint(juce::Graphics& g)
         g.setColour(juce::Colours::black.withAlpha(0.60f));
         g.fillRoundedRectangle((float)indX, (float)indY, (float)kIndW, (float)kIndH, 6.f);
 
-        // Red dot
         g.setColour(juce::Colour(0xffff2020));
         g.fillEllipse((float)(indX + 8), (float)(indY + 6), 12.f, 12.f);
 
-        // "REC" label
         g.setFont(juce::Font(13.f, juce::Font::bold));
         g.setColour(juce::Colours::white);
         g.drawText("REC", indX + 26, indY + 4, 36, 16,
                    juce::Justification::centredLeft, false);
     }
+
+    // ── View gizmo + direction buttons (top-right) ──────────────────────────
+    {
+        const int w = getWidth();
+        const int gizmoR    = 30;   // radius of gizmo circle
+        const int gizmoCx   = w - 16 - gizmoR;
+        const int gizmoCy   = 30 + gizmoR;
+        const float axisLen = static_cast<float>(gizmoR - 4);
+
+        // Background circle
+        g.setColour(juce::Colours::black.withAlpha(0.50f));
+        g.fillEllipse(static_cast<float>(gizmoCx - gizmoR),
+                       static_cast<float>(gizmoCy - gizmoR),
+                       static_cast<float>(gizmoR * 2),
+                       static_cast<float>(gizmoR * 2));
+        g.setColour(juce::Colour(0xff334466));
+        g.drawEllipse(static_cast<float>(gizmoCx - gizmoR),
+                       static_cast<float>(gizmoCy - gizmoR),
+                       static_cast<float>(gizmoR * 2),
+                       static_cast<float>(gizmoR * 2), 1.0f);
+
+        GizmoAxis axes[3];
+        {
+            juce::ScopedLock lock(gizmo_.lock);
+            axes[0] = gizmo_.axes[0];
+            axes[1] = gizmo_.axes[1];
+            axes[2] = gizmo_.axes[2];
+        }
+
+        // Draw axis lines: X=red, Y=green, Z=blue
+        const juce::Colour axisColors[] = {
+            juce::Colour(0xffee3333),
+            juce::Colour(0xff33cc33),
+            juce::Colour(0xff3388ee)
+        };
+        const char* axisLabels[] = { "X", "Y", "Z" };
+
+        for (int i = 0; i < 3; ++i)
+        {
+            float ex = static_cast<float>(gizmoCx) + axes[i].x * axisLen;
+            float ey = static_cast<float>(gizmoCy) + axes[i].y * axisLen;
+
+            g.setColour(axisColors[i]);
+            g.drawLine(static_cast<float>(gizmoCx), static_cast<float>(gizmoCy),
+                       ex, ey, 2.0f);
+
+            // Small dot + label at endpoint
+            g.fillEllipse(ex - 3.f, ey - 3.f, 6.f, 6.f);
+            g.setFont(juce::Font(10.f, juce::Font::bold));
+            g.drawText(axisLabels[i],
+                       static_cast<int>(ex) - 6,
+                       static_cast<int>(ey) - 14,
+                       12, 12,
+                       juce::Justification::centred, false);
+        }
+
+        // Direction buttons below the gizmo
+        const char* btnLabels[] = { "Front", "Back", "Left", "Right" };
+        const juce::Colour btnHover(0xff445577);
+        const juce::Colour btnNormal(0xcc1a1e2e);
+
+        for (int i = 0; i < 4; ++i)
+        {
+            auto r = getGizmoButtonRect(i);
+            g.setColour(btnNormal);
+            g.fillRoundedRectangle(r.toFloat(), 4.f);
+            g.setColour(juce::Colour(0xff556688));
+            g.drawRoundedRectangle(r.toFloat().reduced(0.5f), 4.f, 1.f);
+            g.setFont(juce::Font(11.f));
+            g.setColour(juce::Colour(0xffccddee));
+            g.drawText(btnLabels[i], r, juce::Justification::centred, false);
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Gizmo helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+juce::Rectangle<int> ViewPortComponent::getGizmoButtonRect(int index) const
+{
+    const int w = getWidth();
+    const int gizmoR  = 30;
+    const int btnW    = 52;
+    const int btnH    = 22;
+    const int btnGap  = 3;
+    const int gridW   = btnW * 2 + btnGap;
+    const int startX  = w - 16 - gizmoR - gizmoR + (gizmoR * 2 - gridW) / 2;
+    const int startY  = 30 + gizmoR * 2 + 8;
+
+    int col = index % 2;
+    int row = index / 2;
+    return { startX + col * (btnW + btnGap),
+             startY + row * (btnH + btnGap),
+             btnW, btnH };
+}
+
+bool ViewPortComponent::isInGizmoArea(float x, float y) const
+{
+    for (int i = 0; i < 4; ++i)
+        if (getGizmoButtonRect(i).toFloat().contains(x, y))
+            return true;
+
+    const int w = getWidth();
+    const int gizmoR  = 30;
+    const int gizmoCx = w - 16 - gizmoR;
+    const int gizmoCy = 30 + gizmoR;
+    float dx = x - static_cast<float>(gizmoCx);
+    float dy = y - static_cast<float>(gizmoCy);
+    return (dx * dx + dy * dy) <= static_cast<float>(gizmoR * gizmoR);
 }
 
 void ViewPortComponent::resized() {}
@@ -762,17 +943,19 @@ void ViewPortComponent::mouseDown(const juce::MouseEvent& e)
 {
     grabKeyboardFocus();
 
-    // ── Panel interaction ─────────────────────────────────────────────────────
-    // if (isPanelHit(e.position.x, e.position.y))
-    // {
-    //     // Click on header row → toggle open/closed
-    //     if (e.position.y - (float)kPanelTopY < (float)kHeaderH)
-    //     {
-    //         blockListOpen = !blockListOpen;
-    //         repaint();
-    //     }
-    //     return;   // Never treat panel clicks as world placements
-    // }
+    // ── View gizmo button clicks ─────────────────────────────────────────────
+    if (e.mods.isLeftButtonDown() && isInGizmoArea(e.position.x, e.position.y))
+    {
+        for (int i = 0; i < 4; ++i)
+        {
+            if (getGizmoButtonRect(i).toFloat().contains(e.position))
+            {
+                pendingViewSnap_.store(i);
+                return;
+            }
+        }
+        return;  // clicked gizmo circle itself — consume but do nothing
+    }
 
     
     // ── Edit mode: right-click on existing block ───────────────────────────────

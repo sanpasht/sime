@@ -4,6 +4,9 @@
 
 #include <JuceHeader.h>
 #include "MainComponent.h"
+#include "MathUtils.h"
+#include "BlockEntry.h"
+#include "SceneFile.h"
 
 class SIMEApp final : public juce::JUCEApplication
 {
@@ -16,9 +19,21 @@ public:
 
     void initialise(const juce::String& /*commandLineArgs*/) override
     {
-        mainWindow.reset(new MainWindow("SIME",
-                                        new MainComponent(),
-                                        *this));   
+        auto* mc = new MainComponent();
+        mainComponent = mc;
+        mainWindow.reset(new MainWindow("SIME", mc, *this));
+
+        // Auto-load last session if an autosave exists
+        auto autosave = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
+                            .getChildFile("SIME").getChildFile("autosave.sime");
+        if (autosave.existsAsFile())
+        {
+            // Defer so the GL context has time to initialize
+            juce::MessageManager::callAsync([mc, path = autosave.getFullPathName()]()
+            {
+                mc->loadSceneFromFile(path);
+            });
+        }
     }
 
     void shutdown() override
@@ -28,6 +43,8 @@ public:
 
     void systemRequestedQuit() override
     {
+        if (mainComponent != nullptr)
+            mainComponent->autoSave();
         quit();
     }
 
@@ -75,6 +92,7 @@ public:
 
 private:
     std::unique_ptr<MainWindow> mainWindow;
+    MainComponent* mainComponent = nullptr;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

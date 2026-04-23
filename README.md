@@ -14,10 +14,11 @@ Move a block left or right and the audio pans. Place it higher and the pitch goe
 3. [Controls](#controls)
 4. [Workflow](#workflow)
 5. [Block Movement Recording](#block-movement-recording)
-6. [Audio Architecture](#audio-architecture)
-7. [Project Structure](#project-structure)
-8. [Where to Change Things](#where-to-change-things)
-9. [Known Bugs & Issues](#known-bugs--issues)
+6. [Save / Load Scenes](#save--load-scenes)
+7. [Audio Architecture](#audio-architecture)
+8. [Project Structure](#project-structure)
+9. [Where to Change Things](#where-to-change-things)
+10. [Known Bugs & Issues](#known-bugs--issues)
 
 ---
 
@@ -93,6 +94,21 @@ If `cmake` is not found, add `C:\Program Files\CMake\bin` to PATH and reopen you
 
 > Click inside the viewport first to give it keyboard focus.
 
+### View Gizmo (top-right corner)
+
+A 3D axis compass is displayed in the top-right corner of the viewport. It shows the orientation of the X (red), Y (green), and Z (blue) axes relative to the current camera angle, and rotates in real time as you move.
+
+Below the gizmo are four direction buttons:
+
+| Button | Action |
+|--------|--------|
+| **Front** | Snap camera to view the origin from +Z |
+| **Back** | Snap camera to view the origin from -Z |
+| **Left** | Snap camera to view the origin from -X |
+| **Right** | Snap camera to view the origin from +X |
+
+All four views look at the origin (0,0,0) from a distance with a slight downward angle. After snapping you can freely navigate from the new position with WASD and mouse.
+
 ### Voxel Interaction
 
 | Input | Action |
@@ -112,6 +128,17 @@ If `cmake` is not found, add `C:\Program Files\CMake\bin` to PATH and reopen you
 | `RMB` on block (edit mode) | Open block edit popup |
 | `Alt + LMB` on block (edit mode) | Select block and start movement recording |
 | Play / Pause / Stop | Transport bar buttons at the bottom |
+
+### Scene File Toolbar (top-right)
+
+| Button | Action |
+|--------|--------|
+| **New** | Clear the current scene and start fresh |
+| **Open** | Open a `.sime` file from disk |
+| **Save** | Save to the current file (prompts if no file loaded) |
+| **Save As** | Always prompts for a new file name |
+
+The app also auto-saves to `%APPDATA%/SIME/autosave.sime` when you close it, and auto-loads that scene on the next launch.
 
 ---
 
@@ -183,6 +210,38 @@ Press `E` to exit edit mode, then press **Play**. The block will travel through 
 
 ---
 
+## Save / Load Scenes
+
+Scenes are saved as `.sime` binary files — a compact, custom format that stores every block's full state.
+
+### What Gets Saved
+
+Each block record includes:
+- Serial number and block type (Violin, Piano, Drum, Custom, Listener)
+- 3D grid position (x, y, z)
+- Sound ID and custom WAV file path (if applicable)
+- Start time and duration
+- Duration lock flag
+- Recorded movement path (all keyframes with time and position)
+
+### File Format
+
+The `.sime` format uses a 12-byte header (`SIME` magic, version, block count) followed by tightly packed block records. Movement keyframes are stored inline — no padding, no JSON overhead. A scene with 100 blocks and no movement data is roughly 5 KB.
+
+### Auto-Save / Auto-Load
+
+When the app closes, it saves the current scene to `%APPDATA%/SIME/autosave.sime`. On the next launch, that file is automatically loaded so you pick up where you left off. The auto-save does not overwrite any manually saved `.sime` file.
+
+### Workflow
+
+1. Build a scene with blocks.
+2. Click **Save** (or **Save As**) in the top-right toolbar — choose a location and name.
+3. Close and reopen the app — your scene is restored from the auto-save.
+4. Click **Open** to load a different `.sime` file at any time.
+5. Click **New** to start a blank scene.
+
+---
+
 ## Audio Architecture
 
 ### Component Overview
@@ -249,7 +308,7 @@ SIME/
     ├── MainComponent.cpp/h        # Top-level layout (sidebar + viewport + transport)
     ├── ViewPortComponent.cpp/h    # 3D OpenGL viewport, input, sequencer loop
     ├── Renderer.cpp/h             # OpenGL batch renderer (blocks, grid, highlights)
-    ├── Camera.cpp/h               # First-person camera
+    ├── Camera.cpp/h               # First-person camera + view snapping
     ├── Raycaster.cpp/h            # DDA voxel raycasting
     ├── VoxelGrid.h                # Sparse voxel data structure
     ├── MathUtils.h                # Vec3i, Vec3f, Mat4
@@ -262,7 +321,8 @@ SIME/
     ├── SidebarComponent.cpp/h     # Left-side block list panel
     ├── TransportBarComponent.cpp/h # Bottom play/pause/stop bar
     ├── BlockEditPopup.cpp/h       # Floating block edit dialog
-    └── MovementConfirmPopup.h     # Movement recording confirm dialog
+    ├── MovementConfirmPopup.h     # Movement recording confirm dialog
+    └── SceneFile.cpp/h            # Binary .sime scene save/load
 ```
 
 ---
@@ -275,6 +335,8 @@ SIME/
 - Look sensitivity → `lookSpeed`
 - Field of view → `fovY`
 - Near/far clip → `nearZ` / `farZ`
+- View snap distance → `snapToView()` `distance` parameter (default 15)
+- View snap height → `height = distance * 0.35f` in `snapToView()`
 
 ### Block Placement & Raycasting
 **`ViewPortComponent.cpp`**
@@ -316,6 +378,12 @@ SIME/
 **`BlockEditPopup.cpp`**
 - Fields shown → `showAt()` and `commit()`
 - Popup size → `kWidth` / `kHeight`
+
+### Scene Persistence
+**`SceneFile.cpp` / `SceneFile.h`**
+- File format version → `kVersion` constant (bump when adding new fields)
+- Auto-save location → `autoSave()` in `MainComponent.cpp`
+- Block serialization order → `save()` / `load()` in `SceneFile.cpp`
 
 ---
 
