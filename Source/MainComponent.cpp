@@ -34,13 +34,11 @@ MainComponent::MainComponent()
     addAndMakeVisible(pianoBtn);
     addAndMakeVisible(drumBtn);
     addAndMakeVisible(customBtn);
-    addAndMakeVisible(listenerBtn);
 
-    violinBtn  .onClick = [this] { setActiveBlockType(BlockType::Violin);   };
-    pianoBtn   .onClick = [this] { setActiveBlockType(BlockType::Piano);    };
-    drumBtn    .onClick = [this] { setActiveBlockType(BlockType::Drum);     };
-    customBtn  .onClick = [this] { setActiveBlockType(BlockType::Custom);   };
-    listenerBtn.onClick = [this] { setActiveBlockType(BlockType::Listener); };
+    violinBtn.onClick = [this] { setActiveBlockType(BlockType::Violin); };
+    pianoBtn .onClick = [this] { setActiveBlockType(BlockType::Piano);  };
+    drumBtn  .onClick = [this] { setActiveBlockType(BlockType::Drum);   };
+    customBtn.onClick = [this] { setActiveBlockType(BlockType::Custom); };
 
     refreshToolbarColors();
 
@@ -147,17 +145,15 @@ void MainComponent::refreshToolbarColors()
         }
     };
 
-    style(violinBtn,   BlockType::Violin,   juce::Colour(0xffc03528));
-    style(pianoBtn,    BlockType::Piano,    juce::Colour(0xff3366cc));
-    style(drumBtn,     BlockType::Drum,     juce::Colour(0xff2eaa44));
-    style(customBtn,   BlockType::Custom,   juce::Colour(0xff666688));
-    style(listenerBtn, BlockType::Listener, juce::Colour(0xffdd7010));  // orange
+    style(violinBtn, BlockType::Violin, juce::Colour(0xffc03528));
+    style(pianoBtn,  BlockType::Piano,  juce::Colour(0xff3366cc));
+    style(drumBtn,   BlockType::Drum,   juce::Colour(0xff2eaa44));
+    style(customBtn, BlockType::Custom, juce::Colour(0xff666688));
 
-    violinBtn  .repaint();
-    pianoBtn   .repaint();
-    drumBtn    .repaint();
-    customBtn  .repaint();
-    listenerBtn.repaint();
+    violinBtn.repaint();
+    pianoBtn .repaint();
+    drumBtn  .repaint();
+    customBtn.repaint();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -207,11 +203,10 @@ void MainComponent::resized()
     const int gap  = 4;
     int tx = toolbarArea.getX() + 8;
     int ty = toolbarArea.getY() + (kToolbarH - 26) / 2;
-    violinBtn  .setBounds(tx, ty, btnW, 26);  tx += btnW + gap;
-    pianoBtn   .setBounds(tx, ty, btnW, 26);  tx += btnW + gap;
-    drumBtn    .setBounds(tx, ty, btnW, 26);  tx += btnW + gap;
-    customBtn  .setBounds(tx, ty, btnW, 26);  tx += btnW + gap;
-    listenerBtn.setBounds(tx, ty, btnW, 26);
+    violinBtn.setBounds(tx, ty, btnW, 26);  tx += btnW + gap;
+    pianoBtn .setBounds(tx, ty, btnW, 26);  tx += btnW + gap;
+    drumBtn  .setBounds(tx, ty, btnW, 26);  tx += btnW + gap;
+    customBtn.setBounds(tx, ty, btnW, 26);
 
     // File toolbar — right side of toolbar row
     const int fbtnW = 64;

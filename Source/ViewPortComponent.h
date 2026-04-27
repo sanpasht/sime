@@ -63,43 +63,32 @@ public:
                        const juce::String&, juce::Point<int>)> onRequestBlockEdit;
 
     /// Apply edited values back to the block.
+    /// Safe to call from the message thread — queues the edit for the GL thread.
     void applyBlockEdit(int serial, double startTime, double duration,
                         int soundId, const juce::String& customFile)
     {
-        for (auto& b : blockList)
+        // Resolve any custom WAV file on this (message) thread.
+        // AudioEngine::loadSample() does not touch blockList so it is safe here.
+        int resolvedSoundId = soundId;
+        std::string resolvedPath;
+
+        if (customFile.isNotEmpty())
         {
-            if (b.serial == serial)
+            resolvedPath = customFile.toStdString();
+            juce::File wav(customFile);
+            if (wav.existsAsFile())
             {
-                b.startTimeSec = startTime;
-
-                // durationLocked means the duration is tied to a recorded movement
-                // path — editing it here would desync the keyframe timing.
-                if (!b.durationLocked)
-                    b.durationSec = duration;
-
-                if (b.blockType == BlockType::Custom && customFile.isNotEmpty())
-                {
-                    std::string path = customFile.toStdString();
-                    if (path != b.customFilePath)
-                    {
-                        int newId = nextCustomSoundId_++;
-                        if (audioEngine.loadSample(newId, juce::File(customFile)))
-                        {
-                            b.soundId = newId;
-                            b.customFilePath = path;
-                        }
-                    }
-                }
-                else
-                {
-                    b.soundId = soundId;
-                }
-
-                b.resetPlaybackState();
-                break;
+                int newId = nextCustomSoundId_++;
+                if (audioEngine.loadSample(newId, wav))
+                    resolvedSoundId = newId;
             }
         }
-        selectedSerial = -1;
+
+        {
+            juce::ScopedLock lock(editMutex_);
+            pendingBlockEdit_ = { serial, startTime, duration,
+                                   resolvedSoundId, resolvedPath, true };
+        }
     }
 
     /// Called by MainComponent when movement recording is confirmed
@@ -213,6 +202,26 @@ private:
 
     /// Transport time from the previous frame — used to detect loop wraps.
     double prevTransportTime = 0.0;
+
+    // =========================================================================
+    // Pending block edit  (message → GL thread, fixes BUG-T1)
+    // =========================================================================
+    struct PendingBlockEdit
+    {
+        int         serial    = -1;
+        double      startTime = 0.0;
+        double      duration  = 1.0;
+        int         soundId   = -1;
+        std::string customFile;
+        bool        active    = false;
+    };
+    PendingBlockEdit      pendingBlockEdit_;
+    juce::CriticalSection editMutex_;
+
+    // =========================================================================
+    // Movement drag axis lock
+    // =========================================================================
+    int moveDragPlaneY_ = 0;  ///< Y plane locked at the start of a block drag
 
     // =========================================================================
     // Pending voxel ops  (message → GL thread)

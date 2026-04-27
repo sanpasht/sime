@@ -422,7 +422,7 @@ void Renderer::renderOriginMarker(const Mat4& vp, const Vec3f& lightDir)
     glUseProgram(progVoxels);
     glUniformMatrix4fv(uVP_vox, 1, GL_FALSE, vp.m);
     glUniform3f(uLight,   lightDir.x, lightDir.y, lightDir.z);
-    glUniform3f(uColor_v, 0.9f, 0.15f, 0.1f);
+    glUniform3f(uColor_v, 1.00f, 0.55f, 0.10f);   // orange
     glUniform3f(uModelOffset_vox, 0.f, 0.f, 0.f);
 
     glBindVertexArray(vaoCube);

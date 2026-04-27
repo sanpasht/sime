@@ -29,10 +29,9 @@ static Vec3f getBlockColor(BlockType type, int soundId)
 {
     switch (type)
     {
-        case BlockType::Violin:   return { 0.85f, 0.22f, 0.18f };
-        case BlockType::Piano:    return { 0.25f, 0.45f, 0.90f };
-        case BlockType::Drum:     return { 0.22f, 0.78f, 0.32f };
-        case BlockType::Listener: return { 1.00f, 0.55f, 0.10f };  // orange
+        case BlockType::Violin: return { 0.85f, 0.22f, 0.18f };
+        case BlockType::Piano:  return { 0.25f, 0.45f, 0.90f };
+        case BlockType::Drum:   return { 0.22f, 0.78f, 0.32f };
         case BlockType::Custom:
         {
             static const Vec3f kPalette[] = {
@@ -252,6 +251,40 @@ void ViewPortComponent::renderOpenGL()
         removeReq = pendingRemove;  pendingRemove.active = false;
     }
 
+    // ── Apply queued block edit (BUG-T1 fix: was done on message thread) ─────
+    {
+        PendingBlockEdit edit;
+        {
+            juce::ScopedLock lock(editMutex_);
+            edit = pendingBlockEdit_;
+            pendingBlockEdit_.active = false;
+        }
+        if (edit.active)
+        {
+            for (auto& b : blockList)
+            {
+                if (b.serial == edit.serial)
+                {
+                    b.startTimeSec = edit.startTime;
+                    if (!b.durationLocked)
+                        b.durationSec = edit.duration;
+                    if (!edit.customFile.empty())
+                    {
+                        b.soundId      = edit.soundId;
+                        b.customFilePath = edit.customFile;
+                    }
+                    else
+                    {
+                        b.soundId = edit.soundId;
+                    }
+                    b.resetPlaybackState();
+                    break;
+                }
+            }
+            selectedSerial = -1;
+        }
+    }
+
     // ── Place ─────────────────────────────────────────────────────────────────
     if (placeReq.active)
     {
@@ -333,6 +366,14 @@ void ViewPortComponent::renderOpenGL()
             newBlock.blockType = placedType;
             newBlock.pos       = placePos;
             newBlock.soundId   = blockTypeDefaultSoundId(placedType);
+
+            // BUG-S1 fix: stagger start time so new blocks don't all pile up at t=0.
+            // Assign start = end of the last block, so each new block follows the previous.
+            double maxEnd = 0.0;
+            for (const auto& e : blockList)
+                maxEnd = std::max(maxEnd, e.endTimeSec());
+            newBlock.startTimeSec = maxEnd;
+
             blockList.push_back(newBlock);
             lastPlacedPos = placePos;
             renderer.meshDirty = true;
@@ -1046,6 +1087,7 @@ void ViewPortComponent::mouseDown(const juce::MouseEvent& e)
                     selectedSerial = b.serial;
                     dragStartPos   = b.pos;
                     recordKeyHeld  = true;
+                    moveDragPlaneY_ = b.pos.y;   // lock Y plane for axis-constrained drag
 
                     if (!b.isRecordingMovement)
                     {
@@ -1263,24 +1305,24 @@ void ViewPortComponent::mouseDrag(const juce::MouseEvent& e)
         const Mat4  proj   = camera.getProjectionMatrix(aspect);
         Vec3f rayDir = Raycaster::screenToRay(e.position.x, e.position.y,
                                               (float)w, (float)h, view_, proj);
-        
-        // Find target position (ground plane or existing block face)
+        Vec3f origin = camera.getPosition();
+
         Vec3i targetPos;
-        bool validTarget = false;
-        
-        RaycastResult hit = Raycaster::cast(camera.getPosition(), rayDir, voxelGrid);
-        if (hit.hit)
+        bool  validTarget = false;
+
+        // ── Axis-locked movement (mirrors the shift-plane placement system) ──
+        // Project the cursor ray onto the horizontal plane Y = moveDragPlaneY_.
+        // This prevents the block from "flying" toward the camera.
+        // Shift + scroll wheel raises / lowers the Y plane (see mouseWheelMove).
+        const float planeY = static_cast<float>(moveDragPlaneY_) + 0.5f;
+        if (std::abs(rayDir.y) > 0.001f)
         {
-            targetPos = Raycaster::getPlacementPos(hit);
-            validTarget = (targetPos.y >= 0) && isInBounds(targetPos);
-        }
-        else
-        {
-            Vec3i gp = Raycaster::groundPlaneHit(camera.getPosition(), rayDir);
-            if (gp != Vec3i{})
+            float t = (planeY - origin.y) / rayDir.y;
+            if (t > 0.5f)   // reject hits behind or right at the camera
             {
-                targetPos = gp;
-                validTarget = (targetPos.y >= 0) && isInBounds(targetPos);
+                Vec3f pt = origin + rayDir * t;
+                targetPos   = { (int)std::floor(pt.x), moveDragPlaneY_, (int)std::floor(pt.z) };
+                validTarget = isInBounds(targetPos) && targetPos.y >= 0;
             }
         }
         
@@ -1369,10 +1411,16 @@ void ViewPortComponent::mouseWheelMove(const juce::MouseEvent& e,
     //     return;
     // }
 
-    // Shift held: move the air-placement plane up or down
+    // Shift held: move the air-placement plane up or down.
+    // Also updates the movement drag Y plane when recording.
     if (e.mods.isShiftDown())
     {
-        shiftScrollDelta.fetch_add(w.deltaY > 0.f ? 1 : -1);
+        int delta = w.deltaY > 0.f ? 1 : -1;
+        shiftScrollDelta.fetch_add(delta);
+
+        if (recordKeyHeld && recordingBlockSerial >= 0)
+            moveDragPlaneY_ = std::clamp(moveDragPlaneY_ + delta, 0, kGridHalf - 1);
+
         return;
     }
 
