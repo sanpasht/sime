@@ -740,10 +740,10 @@ void ViewPortComponent::renderOpenGL()
             info += "  RECORDING MOVEMENT  (release mouse to finish)";
         }
         else if (editMode){
-            info += "  EDIT MODE  Click a block to set time  |  Alt+Click = Record movement  |  E = Exit";
+            info += "  EDIT MODE  Click a block to set time  |  Alt+Click = Record movement  |  Tab = Exit";
         }
         else
-            info += "  LMB=Place  RMB=Look/Remove  WASD = Move  Shift=AirPlace  E = Edit  C = Clear";
+            info += "  LMB=Place  RMB=Look/Remove  WASD=Move  E/Q=Up/Down  Shift=AirPlace  Tab=Edit  C=Clear";
 
         juce::ScopedLock lock(hud.lock);
         hud.text = info;
@@ -765,8 +765,8 @@ void ViewPortComponent::processKeyboardMovement(float dt)
     if (KP::isKeyCurrentlyDown('s') || KP::isKeyCurrentlyDown('S')) camera.moveForward(-spd);
     if (KP::isKeyCurrentlyDown('a') || KP::isKeyCurrentlyDown('A')) camera.moveRight  (-spd);
     if (KP::isKeyCurrentlyDown('d') || KP::isKeyCurrentlyDown('D')) camera.moveRight  ( spd);
-    if (KP::isKeyCurrentlyDown(KP::spaceKey))                       camera.moveUp     ( spd);
-    if (juce::ModifierKeys::currentModifiers.isCtrlDown())          camera.moveUp     (-spd);
+    if (KP::isKeyCurrentlyDown('e') || KP::isKeyCurrentlyDown('E')) camera.moveUp     ( spd);
+    if (KP::isKeyCurrentlyDown('q') || KP::isKeyCurrentlyDown('Q')) camera.moveUp     (-spd);
 
     if (juce::ModifierKeys::currentModifiers.isAltDown())
     {
@@ -873,7 +873,7 @@ void ViewPortComponent::paint(juce::Graphics& g)
 
         g.setFont(juce::Font(11.f, juce::Font::bold));
         g.setColour(juce::Colour(0xff6699ff));
-        g.drawText("EDIT MODE  —  E to exit",
+        g.drawText("EDIT MODE  —  Tab to exit",
                    pillX, pillY, kPillW, kPillH,
                    juce::Justification::centred, false);
     }
@@ -1510,8 +1510,8 @@ bool ViewPortComponent::keyPressed(const juce::KeyPress& k)
         return true;
     }
 
-    // E – toggle edit mode
-    if (k.getKeyCode() == 'e' || k.getKeyCode() == 'E')
+    // Tab – toggle edit mode
+    if (k.getKeyCode() == juce::KeyPress::tabKey)
     {
         editMode = !editMode;
         selectedSerial = -1;
