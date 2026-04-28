@@ -30,6 +30,7 @@ target_sources(SIME PRIVATE
     Source/Blockeditpopup.cpp
     Source/TransportBarComponent.cpp
     Source/SceneFile.cpp
+    Source/StartupMenuComponent.cpp   
 )
 
 target_compile_definitions(SIME PRIVATE

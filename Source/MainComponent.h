@@ -6,6 +6,7 @@
 #include "TransportBarComponent.h"
 #include "BlockType.h"
 #include "MovementConfirmPopup.h"
+#include "StartupMenuComponent.h"
 
 class MainComponent : public juce::Component, private juce::Timer
 {
@@ -16,21 +17,22 @@ public:
     void paint(juce::Graphics&) override;
     void resized() override;
 
-    /// Save current scene to the given path (or prompt if empty).
     void saveScene(const juce::String& path = {});
-    /// Open a .sime file and load it.
     void openScene();
-    /// Start a new (empty) scene.
     void newScene();
-    /// Auto-save to the last-used file (called on app close).
     void autoSave();
-    /// Load a scene directly from a file path (used for auto-load).
     void loadSceneFromFile(const juce::String& path);
 
 private:
-    ViewPortComponent view;
-    SidebarComponent  sidebar;
-    BlockEditPopup    editPopup;
+    // ── Startup menu ──────────────────────────────────────────────────────────
+    StartupMenuComponent startupMenu_;
+    bool                 showingStartup_ = true;
+    void                 dismissStartupMenu();
+
+    // ── Main app components ───────────────────────────────────────────────────
+    ViewPortComponent     view;
+    SidebarComponent      sidebar;
+    BlockEditPopup        editPopup;
     TransportBarComponent transportBar;
     std::unique_ptr<MovementConfirmPopup> movementPopup;
     bool isSidebarCollapsed = false;
@@ -50,13 +52,13 @@ private:
     juce::TextButton saveBtn  { "Save" };
     juce::TextButton saveAsBtn{ "Save As" };
 
-    juce::String currentFilePath_;   ///< Path of the currently loaded .sime file
+    juce::String currentFilePath_;
     std::unique_ptr<juce::FileChooser> fileChooser_;
 
     static constexpr int kToolbarH = 34;
-    void showMovementConfirmPopup(int serial, double duration, 
-                              const std::vector<MovementKeyFrame>& keyframes,
-                              juce::Point<int> position);
+    void showMovementConfirmPopup(int serial, double duration,
+                                  const std::vector<MovementKeyFrame>& keyframes,
+                                  juce::Point<int> position);
     void timerCallback() override;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };

@@ -878,12 +878,12 @@ void ViewPortComponent::paint(juce::Graphics& g)
                    juce::Justification::centred, false);
     }
 
-    // ── Recording indicator (red dot + REC label) ─────────────────────────────
+    // ── Recording indicator (red dot + REC label) — left side ────────────────
     if (isRec)
     {
         constexpr int kIndW = 70, kIndH = 24;
-        int indX = getWidth() - kIndW - 12;
-        int indY = 30;
+        constexpr int indX  = 12;
+        constexpr int indY  = 30;
 
         g.setColour(juce::Colours::black.withAlpha(0.60f));
         g.fillRoundedRectangle((float)indX, (float)indY, (float)kIndW, (float)kIndH, 6.f);
@@ -1490,23 +1490,21 @@ bool ViewPortComponent::keyPressed(const juce::KeyPress& k)
     if (k.getKeyCode() == 'c' || k.getKeyCode() == 'C')
     {
         if (blockList.empty())
-            return true;  // nothing to clear, skip dialog
+            return true;
 
-        juce::MessageManager::callAsync([this]()
-        {
-            juce::AlertWindow::showOkCancelBox(
-                juce::AlertWindow::WarningIcon,
-                "Clear scene",
-                "Clear all blocks? This cannot be undone.",
-                "Clear",
-                "Cancel",
-                nullptr,
-                juce::ModalCallbackFunction::create([this](int result)
-                {
-                    if (result == 1)   // 1 = OK / Clear
-                        pendingClear = true;
-                }));
-        });
+        auto* dialog = new juce::AlertWindow("Clear scene",
+                                             "Clear all blocks? This cannot be undone.",
+                                             juce::AlertWindow::WarningIcon);
+        dialog->addButton("Clear",  1);
+        dialog->addButton("Cancel", 0);
+
+        dialog->enterModalState(true,
+            juce::ModalCallbackFunction::create([this](int result)
+            {
+                if (result == 1)
+                    pendingClear = true;
+            }), true);   // true = delete dialog when dismissed
+
         return true;
     }
 

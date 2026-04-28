@@ -7,6 +7,48 @@
 
 MainComponent::MainComponent()
 {
+    // ── Startup menu ──────────────────────────────────────────────────────────
+    addAndMakeVisible(startupMenu_);
+    startupMenu_.setAlwaysOnTop(true);
+
+    startupMenu_.onNewScene = [this]
+    {
+        dismissStartupMenu();
+        newScene();
+    };
+
+    startupMenu_.onOpenScene = [this]
+    {
+        dismissStartupMenu();
+        openScene();
+    };
+
+    startupMenu_.onContinue = [this]
+    {
+        auto autosave = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
+                            .getChildFile("SIME").getChildFile("autosave.sime");
+        dismissStartupMenu();
+        loadSceneFromFile(autosave.getFullPathName());
+    };
+
+    startupMenu_.onRecentFile = [this](const juce::String& path)
+    {
+        dismissStartupMenu();
+        loadSceneFromFile(path);
+    };
+
+    // Hide main app components until the user dismisses the startup screen
+    view        .setVisible(false);
+    sidebar     .setVisible(false);
+    transportBar.setVisible(false);
+    violinBtn   .setVisible(false);
+    pianoBtn    .setVisible(false);
+    drumBtn     .setVisible(false);
+    customBtn   .setVisible(false);
+    newBtn      .setVisible(false);
+    openBtn     .setVisible(false);
+    saveBtn     .setVisible(false);
+    saveAsBtn   .setVisible(false);
     addAndMakeVisible(view);
     addAndMakeVisible(sidebar);
     addAndMakeVisible(transportBar);
@@ -119,6 +161,26 @@ void MainComponent::showMovementConfirmPopup(int serial,
         dialog->centreWithSize(400, 300);
 }
 
+void MainComponent::dismissStartupMenu()
+{
+    showingStartup_ = false;
+    startupMenu_.setVisible(false);
+
+    view        .setVisible(true);
+    sidebar     .setVisible(true);
+    transportBar.setVisible(true);
+    violinBtn   .setVisible(true);
+    pianoBtn    .setVisible(true);
+    drumBtn     .setVisible(true);
+    customBtn   .setVisible(true);
+    newBtn      .setVisible(true);
+    openBtn     .setVisible(true);
+    saveBtn     .setVisible(true);
+    saveAsBtn   .setVisible(true);
+
+    resized();
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 void MainComponent::setActiveBlockType(BlockType t)
@@ -188,6 +250,10 @@ void MainComponent::paint(juce::Graphics& g)
 
 void MainComponent::resized()
 {
+    // Startup menu always fills the whole window
+    startupMenu_.setBounds(getLocalBounds());
+
+    if (showingStartup_) return;  // don't lay out app components while startup is showing
     auto area = getLocalBounds();
 
     // Sidebar — full height, left side
