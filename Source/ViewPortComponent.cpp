@@ -690,6 +690,7 @@ void ViewPortComponent::renderOpenGL()
     {
         juce::ScopedLock lock(hud.lock);
         hud.isRecording = (editMode && recordKeyHeld && recordingBlockSerial >= 0);
+        hud.isEditMode  = editMode;
     }
 // ── HUD ─────────────────────────────────────────────────────────
     
@@ -774,11 +775,12 @@ void ViewPortComponent::processKeyboardMovement(float dt)
         if (KP::isKeyCurrentlyDown('s') || KP::isKeyCurrentlyDown('S')) camera.moveForward(-extra);
     }
 
-    // Clamp camera to grid bounds so you can't walk off the edge
+    // Clamp camera to grid bounds so you can't walk off the edge or above the ceiling
     Vec3f pos = camera.getPosition();
     const float kLimit = (float)kGridHalf - 0.5f;
     pos.x = std::clamp(pos.x, -kLimit, kLimit);
     pos.z = std::clamp(pos.z, -kLimit, kLimit);
+    pos.y = std::clamp(pos.y, 0.1f, (float)kGridHalf);
     camera.setPosition(pos);
 }
 
@@ -827,12 +829,23 @@ void ViewPortComponent::paint(juce::Graphics& g)
 {
     // ── HUD bar ───────────────────────────────────────────────────────────────
     juce::String txt;
-    bool isRec = false;
+    bool isRec      = false;
+    bool isEditMode = false;
     {
         juce::ScopedLock lock(hud.lock);
-        txt   = hud.text;
-        isRec = hud.isRecording;
+        txt        = hud.text;
+        isRec      = hud.isRecording;
+        isEditMode = hud.isEditMode;
     }
+
+    // ── Edit mode viewport border ─────────────────────────────────────────────
+    if (isEditMode)
+    {
+        const juce::Colour editColour(0xff3D6FCC);  // blue, matches Piano block colour
+        g.setColour(editColour.withAlpha(0.55f));
+        g.drawRect(0, 0, getWidth(), getHeight(), 3);
+    }
+
     if (txt.isNotEmpty())
     {
         g.setColour(juce::Colours::black.withAlpha(0.65f));
@@ -842,6 +855,27 @@ void ViewPortComponent::paint(juce::Graphics& g)
         g.setColour(juce::Colour(0xffdddddd));
         g.drawText(txt, 8, 3, getWidth() - 16, 18,
                    juce::Justification::centredLeft, true);
+    }
+
+    // ── Edit mode pill (centered top) ─────────────────────────────────────────
+    if (isEditMode)
+    {
+        constexpr int kPillW = 180, kPillH = 24;
+        const int pillX = (getWidth() - kPillW) / 2;
+        constexpr int pillY = 30;
+
+        g.setColour(juce::Colour(0xcc1a243a));
+        g.fillRoundedRectangle((float)pillX, (float)pillY,
+                               (float)kPillW, (float)kPillH, 12.f);
+        g.setColour(juce::Colour(0xff3D6FCC));
+        g.drawRoundedRectangle((float)pillX, (float)pillY,
+                               (float)kPillW, (float)kPillH, 12.f, 1.f);
+
+        g.setFont(juce::Font(11.f, juce::Font::bold));
+        g.setColour(juce::Colour(0xff6699ff));
+        g.drawText("EDIT MODE  —  E to exit",
+                   pillX, pillY, kPillW, kPillH,
+                   juce::Justification::centred, false);
     }
 
     // ── Recording indicator (red dot + REC label) ─────────────────────────────
@@ -1452,10 +1486,27 @@ bool ViewPortComponent::keyPressed(const juce::KeyPress& k)
         return true;
     }
 
-    // C – clear all voxels
+    // C – clear all voxels (with confirmation)
     if (k.getKeyCode() == 'c' || k.getKeyCode() == 'C')
     {
-        pendingClear = true;
+        if (blockList.empty())
+            return true;  // nothing to clear, skip dialog
+
+        juce::MessageManager::callAsync([this]()
+        {
+            juce::AlertWindow::showOkCancelBox(
+                juce::AlertWindow::WarningIcon,
+                "Clear scene",
+                "Clear all blocks? This cannot be undone.",
+                "Clear",
+                "Cancel",
+                nullptr,
+                juce::ModalCallbackFunction::create([this](int result)
+                {
+                    if (result == 1)   // 1 = OK / Clear
+                        pendingClear = true;
+                }));
+        });
         return true;
     }
 

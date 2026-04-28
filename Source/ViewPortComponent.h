@@ -307,6 +307,7 @@ private:
         juce::String     text;
         juce::Point<int> pos { 8, 3 };
         bool             isRecording = false;  ///< True while movement recording is active
+        bool             isEditMode  = false;  ///< True while edit mode is active
         juce::CriticalSection lock;
     } hud;
 

@@ -12,6 +12,8 @@ juce_add_gui_app(SIME
     BUNDLE_ID           "com.diddysan.sime"
     MICROPHONE_PERMISSION_ENABLED  FALSE
     CAMERA_PERMISSION_ENABLED      FALSE
+    ICON_BIG   "${CMAKE_CURRENT_SOURCE_DIR}/Resources/SIME.png"
+    ICON_SMALL "${CMAKE_CURRENT_SOURCE_DIR}/Resources/SIME.png"
 )
 
 target_sources(SIME PRIVATE
