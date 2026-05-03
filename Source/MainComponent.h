@@ -59,6 +59,9 @@ private:
     void showMovementConfirmPopup(int serial, double duration,
                                   const std::vector<MovementKeyFrame>& keyframes,
                                   juce::Point<int> position);
+
+    void setPlaybackUiState(bool playing, bool paused, double currentTime);
+    void stopPlaybackAndResetUi();
     void timerCallback() override;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };

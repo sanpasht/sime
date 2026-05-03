@@ -7,6 +7,17 @@
 TransportBarComponent::TransportBarComponent()
 {
     // ── Play/Pause button ─────────────────────────────────────────────────────
+    addAndMakeVisible(playPauseButton);
+    addAndMakeVisible(stopButton);
+    addAndMakeVisible(timeLabel);
+    addAndMakeVisible(timeline);
+    addAndMakeVisible(collapseButton);
+
+    collapseButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff25283a));
+    collapseButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+
+    collapseButton.setButtonText(isCollapsed_ ? "^" : "v");
+
     playPauseButton.setColour(juce::TextButton::buttonColourId,  juce::Colour(0xff2a5298));
     playPauseButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
     playPauseButton.onClick = [this]
@@ -26,7 +37,29 @@ TransportBarComponent::TransportBarComponent()
     stopButton.setColour(juce::TextButton::buttonColourId,  juce::Colour(0xff333344));
     stopButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
     stopButton.onClick = [this] { if (onStop) onStop(); };
-    addAndMakeVisible(stopButton);
+
+    timeLabel.setFont(juce::Font(14.0f, juce::Font::bold));
+    timeLabel.setColour(juce::Label::textColourId, juce::Colours::white);
+    timeLabel.setJustificationType(juce::Justification::centred);
+
+    timeline.onBlockEdited = [this](int serial, double start, double duration)
+    {
+        if (onBlockEdited)  // forward to MainComponent
+            onBlockEdited(serial, start, duration);
+    };
+
+    collapseButton.onClick = [this]
+    {
+        isCollapsed_ = !isCollapsed_;
+
+        timeline.setVisible(!isCollapsed_);
+        stopButton.setVisible(!isCollapsed_);
+
+        collapseButton.setButtonText(isCollapsed_ ? "⌃" : "⌄");
+
+        resized();
+        repaint();
+    };
 
     // Poll at 30 Hz so the time display and progress bar feel live
     startTimerHz(30);
@@ -42,6 +75,19 @@ void TransportBarComponent::setTransportState(bool playing, bool paused,
     isPaused_      = paused;
     currentTime_   = currentTimeSec;
     totalDuration_ = totalDurationSec;
+
+    int curMin = (int)(currentTime_ / 60.0);
+    int curSec = (int)std::fmod(currentTime_, 60.0);
+    int totMin = (int)(totalDuration_ / 60.0);
+    int totSec = (int)std::fmod(totalDuration_, 60.0);
+    juce::String timeText = juce::String::formatted("%d:%02d / %d:%02d", 
+                                                    curMin, curSec, totMin, totSec);
+    timeLabel.setText(timeText, juce::dontSendNotification);
+    timeline.setCurrentTime(currentTime_);
+
+
+
+
     updateButtonStates();
     repaint();
 }
@@ -86,6 +132,9 @@ void TransportBarComponent::paint(juce::Graphics& g)
     // Top separator line
     g.setColour(juce::Colour(0xff2a3060));
     g.fillRect(0, 0, bounds.getWidth(), 1);
+
+    g.setColour(juce::Colour(0xff202436));
+    g.fillRect(0, kControlHeight - 1, bounds.getWidth(), 1);
 
     // ── Progress bar area ─────────────────────────────────────────────────────
     // Sits to the right of the buttons and time label
@@ -154,7 +203,30 @@ void TransportBarComponent::paint(juce::Graphics& g)
 
 void TransportBarComponent::resized()
 {
-    const int cy = (getHeight() - kBtnH) / 2;
-    playPauseButton.setBounds(kPad,              cy, kBtnW, kBtnH);
-    stopButton     .setBounds(kPad + kBtnW + 4,  cy, kBtnW, kBtnH);
+    auto bounds = getLocalBounds();
+
+    auto controlStrip = bounds.removeFromTop(kControlHeight);
+
+    playPauseButton.setBounds(controlStrip.removeFromLeft(55).reduced(5));
+
+    if (!isCollapsed_)
+        stopButton.setBounds(controlStrip.removeFromLeft(55).reduced(5));
+
+    timeLabel.setBounds(controlStrip.removeFromLeft(150).reduced(5));
+
+    collapseButton.setBounds(controlStrip.removeFromRight(35).reduced(5));
+
+    if (!isCollapsed_)
+        timeline.setBounds(bounds);
+}
+
+void TransportBarComponent::setBlocks(const std::vector<BlockEntry>& blocks)
+{
+    timeline.setBlocks(blocks);
+}
+
+
+void TransportBarComponent::setTimelinePlaying(bool playing)
+{
+    timeline.setPlaying(playing);
 }

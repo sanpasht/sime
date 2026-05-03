@@ -1530,4 +1530,17 @@ bool ViewPortComponent::keyPressed(const juce::KeyPress& k)
     return false;
 }
 
+void ViewPortComponent::updateBlockTiming(int serial, double start, double duration)
+{
+    for (auto& b : blockList)
+    {
+        if (b.serial == serial)
+        {
+            b.startTimeSec = start;
+            b.durationSec = duration;
+            break;
+        }
+    }
+}
+
 void ViewPortComponent::focusGained(FocusChangeType) {}

@@ -16,6 +16,7 @@
 // ViewPortComponent.h gets both automatically.
 // ─────────────────────────────────────────────────────────────────────────────
 
+#include "MathUtils.h"
 #include "BlockType.h"
 #include <string>
 struct MovementKeyFrame
