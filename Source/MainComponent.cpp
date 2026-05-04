@@ -80,7 +80,11 @@ MainComponent::MainComponent()
     {
         stopPlaybackAndResetUi();
         transportBar.setTimelinePlaying(false);
-    };  
+    };
+    transportBar.onBlockEdited = [this](int serial, double start, double duration)
+    {
+        view.updateBlockTiming(serial, start, duration);
+    };
 
     // ── Block type toolbar ────────────────────────────────────────────────────
     addAndMakeVisible(violinBtn);
