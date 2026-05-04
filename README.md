@@ -19,6 +19,7 @@ Move a block left or right and the audio pans. Place it higher and the pitch goe
 8. [Project Structure](#project-structure)
 9. [Where to Change Things](#where-to-change-things)
 10. [Known Bugs & Issues](#known-bugs--issues)
+11. [Audio library (detailed report)](md%20files/AUDIO_LIBRARY_REPORT.md) — Task 3: 23 block types, CSV index, lazy-loaded WAV picker
 
 ---
 
@@ -139,6 +140,19 @@ All four views look at the origin (0,0,0) from a distance with a slight downward
 | **Save As** | Always prompts for a new file name |
 
 The app also auto-saves to `%APPDATA%/SIME/autosave.sime` when you close it, and auto-loads that scene on the next launch.
+
+### Block type toolbar and sound picker (top of viewport)
+
+To the **left** of the New / Open / Save / Save As buttons:
+
+| UI | What it does |
+|----|----------------|
+| **Color pill** | Shows the active instrument name and a swatch in that type’s color. |
+| **Dropdown** | Picks one of **23 block types** grouped by category (Synth, Strings, Woodwinds, Brass, Percussion, Special). This is what the next `LMB` placement will create. |
+
+In **edit mode** (`E`), **RMB** a block to open the edit window. For non-Custom blocks it includes a **search field** and **scrollable list** of samples from `CSV/sound_library.csv` / `Sounds/` (filtered by that block’s type). Type to search (e.g. note, dynamic, articulation). **Double-click** a row to apply immediately, or select and press **Apply**. **Custom** blocks still use **Browse…** for any WAV on disk.
+
+Run the app with the **working directory** at the repo root (e.g. `cd C:\sime` then launch) so `Sounds\` and `CSV\sound_library.csv` are found. Full design notes: [`md files/AUDIO_LIBRARY_REPORT.md`](md%20files/AUDIO_LIBRARY_REPORT.md).
 
 ---
 

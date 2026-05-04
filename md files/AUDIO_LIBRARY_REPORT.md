@@ -2,6 +2,14 @@
 
 **Feature:** Searchable, lazy-loaded sound library covering 13,759 WAV
 samples across 23 block types.
+
+**Companion doc:** This file is the **detailed** write-up for **Task 3** (in-app
+audio library). **Task 1** (batch MP3→WAV) and **Task 2** (rename + generate
+`sound_library.csv`) are offline scripts / data on disk; this report focuses
+on how the C++ app consumes the CSV and `Sounds/` folder.
+
+**Related README sections:** [Controls](../README.md#controls), [Workflow](../README.md#workflow), [Project structure](../README.md#project-structure), [Sound Library (Where to change things)](../README.md#sound-library).
+
 **Files touched:** `BlockType.h`, `SoundLibrary.{h,cpp}` (new),
 `SoundPickerComponent.{h,cpp}` (new), `BlockEditPopup.{h,cpp}`,
 `MainComponent.{h,cpp}`, `ViewPortComponent.{h,cpp}`, `CMakeLists.txt`.
