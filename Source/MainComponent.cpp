@@ -4,6 +4,8 @@
 
 #include "MainComponent.h"
 #include "SceneFile.h"
+// #include "MathUtils.h"
+// #include "BlockEntry.h"
 
 MainComponent::MainComponent()
 {
@@ -62,13 +64,26 @@ MainComponent::MainComponent()
     };
 
     // ── Transport bar ─────────────────────────────────────────────────────────
-    transportBar.onPlay  = [this] { view.transportPlay(); };
-    transportBar.onPause = [this] { view.transportPause(); };
-    transportBar.onStop  = [this]
+    transportBar.onPlay = [this]
     {
-        view.transportStop();
-        transportBar.setTransportState(false, false, 0.0,
-                                       view.getTransportDuration());
+        view.transportPlay();
+        setPlaybackUiState(true, false, view.getTransportTime());
+        transportBar.setTimelinePlaying(true);
+    };
+    transportBar.onPause = [this]
+    {
+        view.transportPause();
+        setPlaybackUiState(false, true, view.getTransportTime());
+        transportBar.setTimelinePlaying(false);
+    };
+    transportBar.onStop = [this]
+    {
+        stopPlaybackAndResetUi();
+        transportBar.setTimelinePlaying(false);
+    };
+    transportBar.onBlockEdited = [this](int serial, double start, double duration)
+    {
+        view.updateBlockTiming(serial, start, duration);
     };
 
     // ── Block type toolbar ────────────────────────────────────────────────────
@@ -223,20 +238,27 @@ void MainComponent::refreshToolbarColors()
 void MainComponent::timerCallback()
 {
     const double currentTime = view.getTransportTime();
-    const double duration    = view.getTransportDuration();
+    const double duration = view.getTransportDuration();
 
-    if (view.isTransportPlaying() && duration > 0.0 && currentTime >= duration)
+    const bool reachedEnd =
+        view.isTransportPlaying()
+        && duration > 0.0
+        && currentTime >= duration;
+
+    if (reachedEnd)
     {
-        view.transportStop();
-        transportBar.setTransportState(false, false, 0.0, duration);
+        stopPlaybackAndResetUi();
+        transportBar.setBlocks(view.getBlockListCopy());
         return;
     }
 
-    transportBar.setTransportState(
+    setPlaybackUiState(
         view.isTransportPlaying(),
         view.isTransportPaused(),
-        currentTime,
-        duration);
+        currentTime
+    );
+
+    transportBar.setBlocks(view.getBlockListCopy());
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -261,7 +283,7 @@ void MainComponent::resized()
     sidebar.setBounds(area.removeFromLeft(sidebarWidth));
 
     // Transport bar — bottom
-    transportBar.setBounds(area.removeFromBottom(TransportBarComponent::kHeight));
+    transportBar.setBounds(area.removeFromBottom(transportBar.getCurrentHeight()));
 
     // Block type toolbar — top of viewport area
     auto toolbarArea = area.removeFromTop(kToolbarH);
@@ -398,4 +420,26 @@ void MainComponent::loadSceneFromFile(const juce::String& path)
         view.loadScene(std::move(loaded));
         currentFilePath_ = path;
     }
+}
+
+
+void MainComponent::setPlaybackUiState(bool playing, bool paused, double currentTime)
+{
+    const double duration = view.getTransportDuration();
+
+    transportBar.setTransportState(
+        playing,
+        paused,
+        currentTime,
+        duration
+    );
+
+    transportBar.setTimelinePlaying(playing);
+}
+
+void MainComponent::stopPlaybackAndResetUi()
+{
+    view.transportStop();
+
+    setPlaybackUiState(false, false, 0.0);
 }

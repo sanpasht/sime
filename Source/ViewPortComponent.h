@@ -61,6 +61,8 @@ public:
     /// Args: serial, blockType, start, dur, soundId, customFilePath, viewLocalPos
     std::function<void(int, BlockType, double, double, int,
                        const juce::String&, juce::Point<int>)> onRequestBlockEdit;
+    
+    void updateBlockTiming(int serial, double startTime, double duration);
 
     /// Apply edited values back to the block.
     /// Safe to call from the message thread — queues the edit for the GL thread.

@@ -11,6 +11,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 #include <JuceHeader.h>
+#include "TimelineComponent.h"
+#include "MathUtils.h"
+#include "BlockEntry.h"
 
 class TransportBarComponent : public juce::Component,
                                private juce::Timer
@@ -20,19 +23,26 @@ public:
     std::function<void()> onPlay;
     std::function<void()> onPause;
     std::function<void()> onStop;
+    std::function<void(int, double, double)> onBlockEdited;
 
     // ── State pushed in from MainComponent each timer tick ────────────────────
     // Call this from a juce::Timer or after each transport update to keep
     // the display in sync.
-    void setTransportState(bool playing, bool paused,
-                           double currentTimeSec, double totalDurationSec);
-
+    void setTransportState(bool playing, bool paused, double currentTimeSec, double totalDurationSec);                 
+    void setBlocks(const std::vector<BlockEntry>& blocks);
+    
     TransportBarComponent();
 
     void paint  (juce::Graphics&) override;
     void resized() override;
+    void setTimelinePlaying(bool playing);
 
-    static constexpr int kHeight = 44;   ///< Reserve this many pixels in MainComponent
+    int getCurrentHeight() const
+    {
+        return isCollapsed_ ? kCollapsedHeight : kExpandedHeight;
+    }
+
+    
 
 private:
     void timerCallback() override;       ///< Polls onPollState to refresh UI
@@ -41,8 +51,20 @@ private:
     // ── Buttons ───────────────────────────────────────────────────────────────
     juce::TextButton playPauseButton { "Play" };
     juce::TextButton stopButton      { "STOP" };
-
+    juce::TextButton collapseButton { "⌄" };
+    juce::Label timeLabel;
+    TimelineComponent timeline;
+    
     // ── Internal display state ────────────────────────────────────────────────
+    static constexpr int kExpandedHeight  = 300;
+    static constexpr int kCollapsedHeight = 40;
+    static constexpr int kControlHeight   = 40;
+
+
+    static constexpr int kHeight = kExpandedHeight;
+
+
+    bool isCollapsed_ = false; 
     bool   isPlaying_    = false;
     bool   isPaused_     = false;
     double currentTime_  = 0.0;
