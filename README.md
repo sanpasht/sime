@@ -162,15 +162,22 @@ The app also auto-saves to `%APPDATA%/SIME/autosave.sime` when you close it, and
 | Y (up/down) | Pitch — each grid unit = one semitone up |
 | Z (near/far) | Volume — inverse distance falloff |
 
-**Block types:**
+**Block types (23 total, organized by category):**
 
-| Type | Color | Sound |
-|------|-------|-------|
-| Violin | Red | Vibrato + harmonics, sustained |
-| Piano | Blue | Sharp attack, exponential decay |
-| Drum | Green | Kick / snare / hi-hat (selectable) |
-| Custom | White/varies | User-loaded WAV file |
-| Listener | Orange | Defines the spatial listening position |
+The toolbar at the top of the viewport shows the active block type as a color "pill" + a grouped dropdown listing every type. Picking a type changes which block flavor `LMB` will place.
+
+| Category   | Types |
+|------------|-------|
+| Synth      | Piano |
+| Strings    | Violin, Viola, Cello, Double Bass, Banjo, Mandolin, Guitar, Electric Guitar |
+| Woodwinds  | Flute, Oboe, Clarinet, Bass Clarinet, Bassoon, Contrabassoon, Cor Anglais, Saxophone |
+| Brass      | French Horn, Trumpet, Trombone, Tuba |
+| Percussion | Drum, Percussion |
+| Special    | Custom (user WAV), Listener (spatial origin) |
+
+Each type has a distinct color in the 3D viewport. After placing a block, hit `E` and right-click it to open the **edit popup**, which now embeds a searchable list of every sample for that block's category — type a note name (e.g. `A4`), dynamic (`forte`), or articulation (`arco`) to filter ~1,500 samples instantly.
+
+For full details of the sample library and lazy-loading strategy see [`md files/AUDIO_LIBRARY_REPORT.md`](md%20files/AUDIO_LIBRARY_REPORT.md).
 
 ---
 
@@ -217,7 +224,7 @@ Scenes are saved as `.sime` binary files — a compact, custom format that store
 ### What Gets Saved
 
 Each block record includes:
-- Serial number and block type (Violin, Piano, Drum, Custom, Listener)
+- Serial number and block type (one of 23: Violin, Piano, Drum, Banjo, Trumpet, …)
 - 3D grid position (x, y, z)
 - Sound ID and custom WAV file path (if applicable)
 - Start time and duration
@@ -320,9 +327,11 @@ SIME/
     ├── TransportClock.cpp/h       # Playback clock
     ├── SidebarComponent.cpp/h     # Left-side block list panel
     ├── TransportBarComponent.cpp/h # Bottom play/pause/stop bar
-    ├── BlockEditPopup.cpp/h       # Floating block edit dialog
+    ├── BlockEditPopup.cpp/h       # Floating block edit dialog (embeds picker)
     ├── MovementConfirmPopup.h     # Movement recording confirm dialog
-    └── SceneFile.cpp/h            # Binary .sime scene save/load
+    ├── SceneFile.cpp/h            # Binary .sime scene save/load
+    ├── SoundLibrary.cpp/h         # CSV index + lazy WAV cache (13,759 entries)
+    └── SoundPickerComponent.cpp/h # Searchable list UI for the edit popup
 ```
 
 ---
@@ -357,6 +366,15 @@ SIME/
 - Voice gain formula → `handleStartEvent()`
 - Pitch mapping → `voice.pitchRate` formula in `handleStartEvent()`
 - Pan law → `voice.leftGain` / `voice.rightGain` in `handleStartEvent()`
+
+### Sound Library
+**`SoundLibrary.cpp/h`**
+- Master index path → `CSV/sound_library.csv` (loaded in `ViewPortComponent::newOpenGLContextCreated`)
+- Sounds folder root → `Sounds/` (relative to the executable's working directory)
+- Search field set → `SoundLibrary::search()` (currently substring match across note/duration/dynamic/articulation/key/path/displayName)
+- Lazy load policy → `SoundLibrary::ensureLoaded()` — called by `ViewPortComponent::applyBlockEdit()` on commit
+- Block-type colors → `blockTypeColor()` in `BlockType.h`
+- Block-type categories (combo box section grouping) → `blockTypeCategory()` in `BlockType.h`
 
 ### Sequencer / Timing
 **`SequencerEngine.cpp`**

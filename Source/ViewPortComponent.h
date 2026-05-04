@@ -18,6 +18,7 @@
 
 #include "BlockType.h"
 #include "SceneFile.h"
+#include "SoundLibrary.h"
 #include <atomic>
 #include <vector>
 
@@ -64,23 +65,47 @@ public:
 
     /// Apply edited values back to the block.
     /// Safe to call from the message thread — queues the edit for the GL thread.
+    ///
+    /// customFile may be:
+    ///   * empty                              -> use the existing soundId
+    ///   * an absolute path under Sounds/     -> resolved via SoundLibrary (lazy WAV load)
+    ///   * any other absolute path            -> loaded as a one-off Custom WAV
     void applyBlockEdit(int serial, double startTime, double duration,
                         int soundId, const juce::String& customFile)
     {
-        // Resolve any custom WAV file on this (message) thread.
-        // AudioEngine::loadSample() does not touch blockList so it is safe here.
         int resolvedSoundId = soundId;
         std::string resolvedPath;
 
         if (customFile.isNotEmpty())
         {
-            resolvedPath = customFile.toStdString();
             juce::File wav(customFile);
-            if (wav.existsAsFile())
+            juce::File libRoot = juce::File::getCurrentWorkingDirectory()
+                                     .getChildFile("Sounds");
+
+            // Library sound? — relative path stored, AudioEngine cached via SoundLibrary.
+            if (wav.existsAsFile() && wav.isAChildOf(libRoot))
+            {
+                auto rel = wav.getRelativePathFrom(libRoot).replaceCharacter('\\', '/');
+                int entryIdx = library_.findByRelativePath(rel);
+                if (entryIdx >= 0)
+                {
+                    int sid = library_.ensureLoaded(entryIdx, audioEngine);
+                    if (sid >= 0)
+                    {
+                        resolvedSoundId = sid;
+                        resolvedPath    = rel.toStdString();   // stored relative for save/load
+                    }
+                }
+            }
+            // User-supplied WAV (Custom block flow)
+            else if (wav.existsAsFile())
             {
                 int newId = nextCustomSoundId_++;
                 if (audioEngine.loadSample(newId, wav))
+                {
                     resolvedSoundId = newId;
+                    resolvedPath    = customFile.toStdString();   // absolute
+                }
             }
         }
 
@@ -170,6 +195,13 @@ public:
 
     /// Clear the scene (delegates to existing clear path).
     void clearScene() { pendingClear = true; }
+
+    /// Public access to the loaded sound index (read-only for UI components).
+    SoundLibrary& soundLibrary() noexcept { return library_; }
+
+    /// Resolve a library entry to a runtime soundId, loading the WAV if needed.
+    /// Returns -1 if the entry could not be loaded.
+    int registerLibrarySound(int entryIdx);
 
 private:
     // ── Private helpers ───────────────────────────────────────────────────────
@@ -332,6 +364,15 @@ private:
     // =========================================================================
     std::atomic<int> activeBlockType_ { static_cast<int>(BlockType::Violin) };
     int              nextCustomSoundId_ = 1000;
+
+    // =========================================================================
+    // Sound library (CSV index + lazy WAV cache)
+    //
+    // Owned here so its lifetime matches AudioEngine.  Loaded once at GL ctx
+    // creation; samples are loaded into AudioEngine on first use.
+    // =========================================================================
+    SoundLibrary    library_;
+    bool            libraryLoaded_ = false;
 
     // =========================================================================
     // View gizmo / direction snap

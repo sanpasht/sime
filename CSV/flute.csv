@@ -1,0 +1,879 @@
+File,Artist,Title,BPM,Key,Camelot
+flute_A4_1_forte_normal.mp3,,581,80,A minor,8A
+flute_A4_1_mezzo-forte_normal.mp3,,1128 1,78,A minor,8A
+flute_A4_1_mezzo-piano_normal.mp3,,478 1,80,A minor,8A
+flute_A4_1_pianissimo_normal.mp3,,301,101,A major,11B
+flute_A4_1_piano_normal.mp3,,1309 1,101,A minor,8A
+flute_A4_05_forte_normal.mp3,,580,107,A minor,8A
+flute_A4_05_mezzo-forte_normal.mp3,,1127 1,124,A minor,8A
+flute_A4_05_mezzo-piano_normal.mp3,,477 1,83,A minor,8A
+flute_A4_05_pianissimo_normal.mp3,,307,104,A minor,8A
+flute_A4_05_piano_normal.mp3,,104 1,99,A minor,8A
+flute_A4_15_forte_normal.mp3,,588 1,104,A minor,8A
+flute_A4_15_mezzo-forte_normal.mp3,,1129 2,150,A minor,8A
+flute_A4_15_mezzo-piano_normal.mp3,,479 1,85,A minor,8A
+flute_A4_15_pianissimo_normal.mp3,,309 1,147,A minor,8A
+flute_A4_15_piano_normal.mp3,,1310,99,A minor,8A
+flute_A4_025_forte_normal.mp3,,579,147,A minor,8A
+flute_A4_025_mezzo-forte_normal.mp3,,1126 1,101,A minor,8A
+flute_A4_025_mezzo-piano_normal.mp3,,476,123,A minor,8A
+flute_A4_025_pianissimo_normal.mp3,,299,83,A minor,8A
+flute_A4_025_piano_normal.mp3,,103 1,80,A minor,8A
+flute_A4_long_mezzo-forte_major-trill.mp3,,941 1,94,A minor,8A
+flute_A4_long_mezzo-forte_minor-trill.mp3,,940 1,96,B♭ major,6B
+flute_A4_phrase_mezzo-forte_normal.mp3,,0,130,A minor,8A
+flute_A4_very-long_cresc-decresc_normal.mp3,,1368 1,119,A minor,8A
+flute_A5_1_forte_normal.mp3,,655 1,83,A minor,8A
+flute_A5_1_mezzo-forte_normal.mp3,,1268,83,A minor,8A
+flute_A5_1_mezzo-piano_normal.mp3,,526 1,153,A minor,8A
+flute_A5_1_pianissimo_normal.mp3,,365 1,142,A minor,8A
+flute_A5_1_piano_normal.mp3,,153 2,107,A minor,8A
+flute_A5_05_forte_normal.mp3,,654,107,A minor,8A
+flute_A5_05_mezzo-forte_normal.mp3,,1179 1,109,A minor,8A
+flute_A5_05_mezzo-piano_normal.mp3,,525 1,118,A minor,8A
+flute_A5_05_pianissimo_normal.mp3,,364 1,153,A minor,8A
+flute_A5_05_piano_normal.mp3,,152 2,107,A minor,8A
+flute_A5_15_forte_normal.mp3,,656 1,94,A minor,8A
+flute_A5_15_mezzo-forte_normal.mp3,,1181 2,87,A minor,8A
+flute_A5_15_mezzo-piano_normal.mp3,,527 1,153,A minor,8A
+flute_A5_15_pianissimo_normal.mp3,,366,85,A minor,8A
+flute_A5_15_piano_normal.mp3,,154 2,80,A minor,8A
+flute_A5_025_forte_normal.mp3,,653 1,82,A minor,8A
+flute_A5_025_mezzo-forte_normal.mp3,,1178 1,144,A minor,8A
+flute_A5_025_mezzo-piano_normal.mp3,,524 1,89,A minor,8A
+flute_A5_025_pianissimo_normal.mp3,,363,101,A minor,8A
+flute_A5_025_piano_normal.mp3,,166 2,85,A minor,8A
+flute_A5_long_mezzo-forte_major-trill.mp3,,932,94,A minor,8A
+flute_A5_long_mezzo-forte_minor-trill.mp3,,931 1,94,B♭ major,6B
+flute_A5_long_piano_normal.mp3,,865 1,136,A minor,8A
+flute_A5_phrase_mezzo-forte_double-tonguing.mp3,,772,127,A minor,8A
+flute_A5_phrase_mezzo-forte_fluttertonguing.mp3,,852,134,D major,10B
+flute_A5_phrase_mezzo-forte_nonlegato.mp3,,778,91,A minor,8A
+flute_A5_phrase_mezzo-forte_staccatissimo.mp3,,812,101,A minor,8A
+flute_A5_phrase_mezzo-forte_staccato.mp3,,799,101,A minor,8A
+flute_A5_phrase_mezzo-forte_tenuto.mp3,,802,127,A minor,8A
+flute_A5_phrase_mezzo-forte_tongued-slur.mp3,,844 1,118,A major,11B
+flute_A5_phrase_mezzo-forte_triple-tonguing.mp3,,836,126,D minor,7A
+flute_A5_very-long_cresc-decresc_normal.mp3,,1372,76,A minor,8A
+flute_A6_1_forte_normal.mp3,,1045 1,83,A minor,8A
+flute_A6_1_fortissimo_minor-trill.mp3,,947 1,107,A minor,8A
+flute_A6_1_mezzo-forte_normal.mp3,,1223 2,82,A major,11B
+flute_A6_1_pianissimo_normal.mp3,,415,94,A minor,8A
+flute_A6_1_piano_normal.mp3,,226 1,142,A minor,8A
+flute_A6_05_forte_normal.mp3,,1044 2,107,A minor,8A
+flute_A6_05_mezzo-forte_normal.mp3,,1222 2,114,A minor,8A
+flute_A6_05_pianissimo_normal.mp3,,414 1,107,A minor,8A
+flute_A6_05_piano_normal.mp3,,225 1,121,A major,11B
+flute_A6_15_forte_normal.mp3,,708 1,85,D minor,7A
+flute_A6_15_mezzo-forte_normal.mp3,,46 1,153,A major,11B
+flute_A6_15_pianissimo_normal.mp3,,416 1,94,A minor,8A
+flute_A6_15_piano_normal.mp3,,227,142,A major,11B
+flute_A6_025_forte_normal.mp3,,1043,139,A minor,8A
+flute_A6_025_mezzo-forte_normal.mp3,,1221 2,107,B minor,10A
+flute_A6_025_pianissimo_normal.mp3,,413,153,A minor,8A
+flute_A6_025_piano_normal.mp3,,224 1,153,A minor,8A
+flute_A6_long_fortissimo_major-trill.mp3,,946 1,94,A minor,8A
+flute_A6_long_mezzo-forte_minor-trill.mp3,,939,121,A minor,8A
+flute_A6_long_piano_normal.mp3,,894,91,A minor,8A
+flute_A6_very-long_cresc-decresc_normal.mp3,,1376,88,A minor,8A
+flute_As4_1_forte_normal.mp3,,591,107,B♭ minor,3A
+flute_As4_1_mezzo-forte_normal.mp3,,1132 1,85,B♭ major,6B
+flute_As4_1_mezzo-piano_normal.mp3,,482 1,96,B♭ minor,3A
+flute_As4_1_pianissimo_normal.mp3,,312 1,87,B♭ major,6B
+flute_As4_1_piano_normal.mp3,,1313,144,B♭ major,6B
+flute_As4_05_forte_normal.mp3,,590 1,133,B♭ major,6B
+flute_As4_05_mezzo-forte_normal.mp3,,1131 2,125,B♭ major,6B
+flute_As4_05_mezzo-piano_normal.mp3,,481,83,B♭ minor,3A
+flute_As4_05_pianissimo_normal.mp3,,973 1,142,E♭ major,5B
+flute_As4_05_piano_normal.mp3,,108 1,107,B♭ major,6B
+flute_As4_15_forte_normal.mp3,,592 1,82,B♭ major,6B
+flute_As4_15_mezzo-forte_normal.mp3,,1133 2,119,B♭ major,6B
+flute_As4_15_mezzo-forte_tremolo.mp3,,914,109,D minor,7A
+flute_As4_15_mezzo-piano_normal.mp3,,483,89,B♭ minor,3A
+flute_As4_15_pianissimo_normal.mp3,,313 1,121,B♭ minor,3A
+flute_As4_15_piano_normal.mp3,,1314,91,B♭ major,6B
+flute_As4_025_forte_normal.mp3,,589 1,132,B♭ minor,3A
+flute_As4_025_mezzo-forte_normal.mp3,,1130 1,132,A minor,8A
+flute_As4_025_mezzo-piano_normal.mp3,,480 1,136,B♭ major,6B
+flute_As4_025_pianissimo_normal.mp3,,972 1,96,B♭ minor,3A
+flute_As4_025_piano_normal.mp3,,107 1,150,B♭ major,6B
+flute_As4_long_mezzo-forte_tremolo.mp3,,911,106,D minor,7A
+flute_As5_1_forte_normal.mp3,,659 1,82,B♭ major,6B
+flute_As5_1_mezzo-forte_normal.mp3,,1272,83,D minor,7A
+flute_As5_1_mezzo-piano_normal.mp3,,530 1,82,B♭ major,6B
+flute_As5_1_pianissimo_normal.mp3,,369 1,107,D minor,7A
+flute_As5_1_piano_normal.mp3,,172 1,80,B♭ major,6B
+flute_As5_05_forte_normal.mp3,,658 1,119,B♭ major,6B
+flute_As5_05_mezzo-forte_normal.mp3,,1271 1,107,B♭ minor,3A
+flute_As5_05_mezzo-piano_normal.mp3,,529 1,107,B♭ minor,3A
+flute_As5_05_pianissimo_normal.mp3,,368 1,89,A minor,8A
+flute_As5_05_piano_normal.mp3,,156 2,89,B♭ minor,3A
+flute_As5_15_forte_normal.mp3,,660 1,96,B♭ major,6B
+flute_As5_15_mezzo-forte_normal.mp3,,1185 2,107,B♭ major,6B
+flute_As5_15_mezzo-piano_normal.mp3,,531 1,142,B♭ minor,3A
+flute_As5_15_pianissimo_normal.mp3,,370 1,107,A minor,8A
+flute_As5_15_piano_normal.mp3,,173 2,142,B♭ major,6B
+flute_As5_025_forte_normal.mp3,,657 1,150,B♭ minor,3A
+flute_As5_025_mezzo-forte_normal.mp3,,1182 1,153,B♭ major,6B
+flute_As5_025_mezzo-piano_normal.mp3,,528 1,125,A minor,8A
+flute_As5_025_pianissimo_normal.mp3,,367 1,83,A minor,8A
+flute_As5_025_piano_normal.mp3,,155 2,153,B♭ major,6B
+flute_As5_long_piano_normal.mp3,,867 1,85,A minor,8A
+flute_As6_1_forte_normal.mp3,,711 1,83,A minor,8A
+flute_As6_1_mezzo-forte_normal.mp3,,49 1,150,A major,11B
+flute_As6_1_pianissimo_normal.mp3,,419 1,87,A major,11B
+flute_As6_1_piano_normal.mp3,,230,107,A minor,8A
+flute_As6_05_forte_normal.mp3,,1047 2,139,A minor,8A
+flute_As6_05_mezzo-forte_normal.mp3,,1226 2,80,A minor,8A
+flute_As6_05_pianissimo_normal.mp3,,996 1,106,A minor,8A
+flute_As6_05_piano_normal.mp3,,229,80,A major,11B
+flute_As6_15_forte_normal.mp3,,1049 2,150,A minor,8A
+flute_As6_15_mezzo-forte_normal.mp3,,1228 2,99,D minor,7A
+flute_As6_15_pianissimo_normal.mp3,,420 1,91,A major,11B
+flute_As6_15_piano_normal.mp3,,231,136,A minor,8A
+flute_As6_025_forte_normal.mp3,,1046 2,153,A major,11B
+flute_As6_025_mezzo-forte_normal.mp3,,47 1,147,A major,11B
+flute_As6_025_pianissimo_normal.mp3,,994 1,107,A minor,8A
+flute_As6_025_piano_normal.mp3,,228,142,A minor,8A
+flute_B4_1_forte_normal.mp3,,595,83,B minor,10A
+flute_B4_1_mezzo-forte_normal.mp3,,1136 2,150,B minor,10A
+flute_B4_1_mezzo-piano_normal.mp3,,486 1,78,B minor,10A
+flute_B4_1_pianissimo_normal.mp3,,320,104,B minor,10A
+flute_B4_1_piano_normal.mp3,,113 1,104,B minor,10A
+flute_B4_05_forte_normal.mp3,,594 1,107,B minor,10A
+flute_B4_05_mezzo-forte_normal.mp3,,1135 2,82,B minor,10A
+flute_B4_05_mezzo-piano_normal.mp3,,485,107,B minor,10A
+flute_B4_05_pianissimo_normal.mp3,,319,94,A minor,8A
+flute_B4_05_piano_normal.mp3,,112 1,107,B minor,10A
+flute_B4_15_forte_normal.mp3,,596 1,80,B minor,10A
+flute_B4_15_mezzo-forte_normal.mp3,,1137 1,107,B minor,10A
+flute_B4_15_mezzo-piano_normal.mp3,,487,153,B minor,10A
+flute_B4_15_pianissimo_normal.mp3,,321 1,104,A minor,8A
+flute_B4_15_piano_normal.mp3,,1318 1,150,A major,11B
+flute_B4_025_forte_normal.mp3,,593,142,B minor,10A
+flute_B4_025_mezzo-forte_normal.mp3,,1134 1,142,A major,11B
+flute_B4_025_mezzo-piano_normal.mp3,,484 1,136,B minor,10A
+flute_B4_025_pianissimo_normal.mp3,,314 1,112,A minor,8A
+flute_B4_025_piano_normal.mp3,,111,87,A major,11B
+flute_B5_1_forte_normal.mp3,,663 1,80,A major,11B
+flute_B5_1_mezzo-forte_normal.mp3,,1188 1,107,B minor,10A
+flute_B5_1_mezzo-piano_normal.mp3,,534 1,147,A major,11B
+flute_B5_1_pianissimo_normal.mp3,,990 1,83,D major,10B
+flute_B5_1_piano_normal.mp3,,176 2,101,B minor,10A
+flute_B5_05_forte_normal.mp3,,662 1,113,A minor,8A
+flute_B5_05_mezzo-forte_normal.mp3,,1187 2,115,B minor,10A
+flute_B5_05_mezzo-piano_normal.mp3,,533 1,100,A major,11B
+flute_B5_05_pianissimo_normal.mp3,,989 1,96,A minor,8A
+flute_B5_05_piano_normal.mp3,,175 2,107,A minor,8A
+flute_B5_15_forte_normal.mp3,,664 1,80,B minor,10A
+flute_B5_15_mezzo-forte_normal.mp3,,8,83,A minor,8A
+flute_B5_15_mezzo-piano_normal.mp3,,535 1,153,A minor,8A
+flute_B5_15_piano_normal.mp3,,162 1,104,A minor,8A
+flute_B5_025_forte_normal.mp3,,661 1,85,A minor,8A
+flute_B5_025_mezzo-forte_normal.mp3,,1186 1,85,A major,11B
+flute_B5_025_mezzo-piano_normal.mp3,,532 1,127,A minor,8A
+flute_B5_025_pianissimo_normal.mp3,,988 1,107,D major,10B
+flute_B5_025_piano_normal.mp3,,174 2,82,D major,10B
+flute_B5_long_piano_normal.mp3,,868,115,A minor,8A
+flute_B6_1_forte_normal.mp3,,1244 1,101,B minor,10A
+flute_B6_1_mezzo-forte_normal.mp3,,53 1,91,A minor,8A
+flute_B6_1_pianissimo_normal.mp3,,430 1,82,A minor,8A
+flute_B6_1_piano_normal.mp3,,234,107,A major,11B
+flute_B6_05_forte_normal.mp3,,1051 2,122,D major,10B
+flute_B6_05_mezzo-forte_normal.mp3,,1230 2,122,A minor,8A
+flute_B6_05_pianissimo_normal.mp3,,422 1,107,A major,11B
+flute_B6_05_piano_normal.mp3,,233,70,B minor,10A
+flute_B6_15_forte_normal.mp3,,1053,147,A major,11B
+flute_B6_15_mezzo-forte_normal.mp3,,54,80,A major,11B
+flute_B6_15_pianissimo_normal.mp3,,424 1,82,A minor,8A
+flute_B6_15_piano_normal.mp3,,249,87,A minor,8A
+flute_B6_025_forte_normal.mp3,,1050 1,99,A minor,8A
+flute_B6_025_mezzo-forte_normal.mp3,,51 1,79,A major,11B
+flute_B6_025_pianissimo_normal.mp3,,421 1,153,A minor,8A
+flute_B6_025_piano_normal.mp3,,232,87,A minor,8A
+flute_B6_long_fortissimo_minor-trill.mp3,,948 1,85,D major,10B
+flute_C4_1_forte_normal.mp3,,545 1,107,C major,8B
+flute_C4_1_mezzo-forte_normal.mp3,,1092 1,80,C major,8B
+flute_C4_1_mezzo-piano_normal.mp3,,442 1,85,C major,8B
+flute_C4_1_pianissimo_normal.mp3,,276 1,94,C major,8B
+flute_C4_1_piano_normal.mp3,,1275 1,142,C major,8B
+flute_C4_05_forte_normal.mp3,,544 1,82,C major,8B
+flute_C4_05_mezzo-forte_normal.mp3,,1091 1,87,C major,8B
+flute_C4_05_mezzo-piano_normal.mp3,,441 1,106,C major,8B
+flute_C4_05_pianissimo_normal.mp3,,275 1,107,F major,7B
+flute_C4_05_piano_normal.mp3,,68 1,104,C major,8B
+flute_C4_15_forte_normal.mp3,,546 1,82,C major,8B
+flute_C4_15_mezzo-forte_normal.mp3,,1084 1,147,C major,8B
+flute_C4_15_mezzo-piano_normal.mp3,,443 1,101,C major,8B
+flute_C4_15_pianissimo_normal.mp3,,277 1,107,C major,8B
+flute_C4_15_piano_normal.mp3,,1276 1,107,C major,8B
+flute_C4_025_forte_normal.mp3,,543 1,82,C major,8B
+flute_C4_025_mezzo-forte_normal.mp3,,1081 1,129,C major,8B
+flute_C4_025_mezzo-piano_normal.mp3,,440 1,107,C major,8B
+flute_C4_025_pianissimo_normal.mp3,,274 1,123,A minor,8A
+flute_C4_025_piano_normal.mp3,,67 1,114,C major,8B
+flute_C4_long_mezzo-forte_tremolo.mp3,,909 1,119,C major,8B
+flute_C4_phrase_mezzo-forte_double-tonguing.mp3,,814,107,D major,10B
+flute_C4_phrase_mezzo-forte_fluttertonguing.mp3,,846 1,134,D major,10B
+flute_C4_phrase_mezzo-forte_legato.mp3,,745,99,D major,10B
+flute_C4_phrase_mezzo-forte_nonlegato.mp3,,774,113,D major,10B
+flute_C4_phrase_mezzo-forte_staccato.mp3,,804,93,D major,10B
+flute_C4_phrase_mezzo-forte_tenuto.mp3,,789,116,D major,10B
+flute_C4_phrase_mezzo-forte_tongued-slur.mp3,,752 1,85,D major,10B
+flute_C4_phrase_mezzo-forte_triple-tonguing.mp3,,828 1,83,D major,10B
+flute_C4_very-long_cresc-decresc_normal.mp3,,895 1,124,C major,8B
+flute_C5_1_forte_normal.mp3,,599,80,A minor,8A
+flute_C5_1_mezzo-forte_normal.mp3,,1140 1,82,A minor,8A
+flute_C5_1_mezzo-piano_normal.mp3,,490 1,80,C major,8B
+flute_C5_1_pianissimo_normal.mp3,,325,78,F major,7B
+flute_C5_1_piano_normal.mp3,,117 1,153,A minor,8A
+flute_C5_05_forte_normal.mp3,,598 1,106,C major,8B
+flute_C5_05_mezzo-forte_normal.mp3,,1139 1,118,D minor,7A
+flute_C5_05_mezzo-piano_normal.mp3,,489 1,83,D minor,7A
+flute_C5_05_pianissimo_normal.mp3,,324 1,107,C major,8B
+flute_C5_05_piano_normal.mp3,,1320,107,A minor,8A
+flute_C5_15_forte_normal.mp3,,600 1,107,C major,8B
+flute_C5_15_mezzo-forte_normal.mp3,,1141 2,80,A minor,8A
+flute_C5_15_mezzo-piano_normal.mp3,,491 1,99,A minor,8A
+flute_C5_15_pianissimo_normal.mp3,,326 1,99,A minor,8A
+flute_C5_15_piano_normal.mp3,,1322 1,147,A minor,8A
+flute_C5_025_forte_normal.mp3,,597,80,C major,8B
+flute_C5_025_mezzo-forte_normal.mp3,,1138,132,A major,11B
+flute_C5_025_mezzo-piano_normal.mp3,,488 1,80,A minor,8A
+flute_C5_025_pianissimo_normal.mp3,,323,132,D minor,7A
+flute_C5_025_piano_normal.mp3,,115 1,147,F major,7B
+flute_C5_long_mezzo-forte_major-trill.mp3,,930,83,D minor,7A
+flute_C5_long_mezzo-forte_minor-trill.mp3,,929 1,127,A major,11B
+flute_C5_long_piano_normal.mp3,,854,71,A minor,8A
+flute_C5_phrase_mezzo-forte_double-tonguing.mp3,,817,114,A minor,8A
+flute_C5_phrase_mezzo-forte_fluttertonguing.mp3,,849,129,A minor,8A
+flute_C5_phrase_mezzo-forte_legato.mp3,,748,109,D minor,7A
+flute_C5_phrase_mezzo-forte_nonlegato.mp3,,777,88,A minor,8A
+flute_C5_phrase_mezzo-forte_staccatissimo.mp3,,808,101,A minor,8A
+flute_C5_phrase_mezzo-forte_staccato.mp3,,796,97,A minor,8A
+flute_C5_phrase_mezzo-forte_tenuto.mp3,,801,91,A minor,8A
+flute_C5_phrase_mezzo-forte_tongued-slur.mp3,,755 1,96,A minor,8A
+flute_C5_phrase_mezzo-forte_triple-tonguing.mp3,,833,94,D minor,7A
+flute_C5_very-long_cresc-decresc_normal.mp3,,1369 1,139,A minor,8A
+flute_C6_1_forte_normal.mp3,,667 1,83,D minor,7A
+flute_C6_1_mezzo-forte_normal.mp3,,1192 1,82,C major,8B
+flute_C6_1_mezzo-piano_normal.mp3,,538 1,85,C major,8B
+flute_C6_05_forte_normal.mp3,,666 1,119,A minor,8A
+flute_C6_05_mezzo-forte_normal.mp3,,1191 1,115,A minor,8A
+flute_C6_05_mezzo-piano_normal.mp3,,537 1,126,F major,7B
+flute_C6_05_pianissimo_normal.mp3,,373,85,A minor,8A
+flute_C6_05_piano_normal.mp3,,179 2,99,A minor,8A
+flute_C6_15_forte_normal.mp3,,668 1,83,A minor,8A
+flute_C6_15_mezzo-forte_normal.mp3,,1193 2,80,C major,8B
+flute_C6_15_mezzo-piano_normal.mp3,,539 1,153,A minor,8A
+flute_C6_025_forte_normal.mp3,,665 1,89,A minor,8A
+flute_C6_025_mezzo-forte_normal.mp3,,1190 1,80,A minor,8A
+flute_C6_025_mezzo-piano_normal.mp3,,536 1,101,A minor,8A
+flute_C6_025_pianissimo_normal.mp3,,372 1,136,A minor,8A
+flute_C6_025_piano_normal.mp3,,178 2,147,A major,11B
+flute_C6_long_mezzo-forte_major-trill.mp3,,934,104,D minor,7A
+flute_C6_long_mezzo-forte_minor-trill.mp3,,933 1,109,A major,11B
+flute_C6_long_piano_normal.mp3,,869 1,69,A minor,8A
+flute_C6_very-long_cresc-decresc_normal.mp3,,1373,89,A minor,8A
+flute_C7_1_forte_normal.mp3,,719 1,107,D minor,7A
+flute_C7_1_mezzo-forte_normal.mp3,,1235 1,104,A major,11B
+flute_C7_1_pianissimo_normal.mp3,,427,85,A minor,8A
+flute_C7_1_piano_normal.mp3,,252,87,A minor,8A
+flute_C7_05_forte_normal.mp3,,718 1,82,C# minor,
+flute_C7_05_mezzo-forte_normal.mp3,,1234 1,114,A minor,8A
+flute_C7_05_pianissimo_normal.mp3,,433,150,A minor,8A
+flute_C7_05_piano_normal.mp3,,251,129,A minor,8A
+flute_C7_15_forte_normal.mp3,,720 1,107,D minor,7A
+flute_C7_15_mezzo-forte_normal.mp3,,58,80,A minor,8A
+flute_C7_15_pianissimo_normal.mp3,,435,96,A minor,8A
+flute_C7_15_piano_normal.mp3,,239,87,A minor,8A
+flute_C7_025_forte_normal.mp3,,1246,144,D major,10B
+flute_C7_025_mezzo-forte_normal.mp3,,55 1,153,A minor,8A
+flute_C7_025_pianissimo_normal.mp3,,432 1,153,A minor,8A
+flute_C7_025_piano_normal.mp3,,236,85,A minor,8A
+flute_C7_very-long_cresc-decresc_normal.mp3,,1377,84,A major,11B
+flute_Cs4_1_forte_normal.mp3,,549 1,153,C# minor,
+flute_Cs4_1_mezzo-forte_normal.mp3,,1087 1,96,C# minor,
+flute_Cs4_1_mezzo-piano_normal.mp3,,446,80,C# minor,
+flute_Cs4_1_pianissimo_normal.mp3,,962 1,96,A major,11B
+flute_Cs4_1_piano_normal.mp3,,73 1,91,C# minor,
+flute_Cs4_05_forte_normal.mp3,,548 1,87,C# minor,
+flute_Cs4_05_mezzo-forte_normal.mp3,,1095,142,A major,11B
+flute_Cs4_05_mezzo-piano_normal.mp3,,445 1,127,C# minor,
+flute_Cs4_05_pianissimo_normal.mp3,,961 1,85,A major,11B
+flute_Cs4_05_piano_normal.mp3,,1278 1,99,A major,11B
+flute_Cs4_15_forte_normal.mp3,,550 1,99,C# minor,
+flute_Cs4_15_mezzo-forte_normal.mp3,,1097 1,150,C# minor,
+flute_Cs4_15_mezzo-piano_normal.mp3,,447 1,78,C# minor,
+flute_Cs4_15_piano_normal.mp3,,1280 1,147,C# minor,
+flute_Cs4_025_forte_normal.mp3,,547 1,150,A major,11B
+flute_Cs4_025_mezzo-forte_normal.mp3,,1085 1,123,A major,11B
+flute_Cs4_025_mezzo-piano_normal.mp3,,444 1,80,A major,11B
+flute_Cs4_025_pianissimo_normal.mp3,,960 1,87,A major,11B
+flute_Cs4_025_piano_normal.mp3,,71 1,153,A major,11B
+flute_Cs5_1_forte_normal.mp3,,603,107,A major,11B
+flute_Cs5_1_mezzo-forte_normal.mp3,,1144 1,82,C# minor,
+flute_Cs5_1_mezzo-piano_normal.mp3,,494 1,82,A major,11B
+flute_Cs5_1_pianissimo_normal.mp3,,329 1,96,A major,11B
+flute_Cs5_1_piano_normal.mp3,,1325,107,A major,11B
+flute_Cs5_05_forte_normal.mp3,,602 1,111,C# minor,
+flute_Cs5_05_mezzo-forte_normal.mp3,,1143 2,83,C# minor,
+flute_Cs5_05_mezzo-piano_normal.mp3,,493 1,114,C# minor,
+flute_Cs5_05_pianissimo_normal.mp3,,328 1,96,A major,11B
+flute_Cs5_05_piano_normal.mp3,,120 1,107,C# minor,
+flute_Cs5_15_forte_normal.mp3,,604 1,114,A major,11B
+flute_Cs5_15_mezzo-forte_normal.mp3,,1145 2,107,A major,11B
+flute_Cs5_15_mezzo-piano_normal.mp3,,495 1,94,A major,11B
+flute_Cs5_15_pianissimo_normal.mp3,,330 1,107,A major,11B
+flute_Cs5_15_piano_normal.mp3,,1326,150,A major,11B
+flute_Cs5_025_forte_normal.mp3,,601,83,A major,11B
+flute_Cs5_025_mezzo-forte_normal.mp3,,1142 1,123,A major,11B
+flute_Cs5_025_mezzo-piano_normal.mp3,,492 1,153,C# minor,
+flute_Cs5_025_pianissimo_normal.mp3,,327 1,153,C# minor,
+flute_Cs5_025_piano_normal.mp3,,1323,134,E♭ minor,2A
+flute_Cs5_long_piano_normal.mp3,,860 1,107,A major,11B
+flute_Cs6_1_forte_normal.mp3,,671,85,A major,11B
+flute_Cs6_1_mezzo-forte_normal.mp3,,1196 1,80,A major,11B
+flute_Cs6_1_mezzo-piano_normal.mp3,,542 1,80,A major,11B
+flute_Cs6_1_pianissimo_normal.mp3,,376 1,83,A major,11B
+flute_Cs6_1_piano_normal.mp3,,182 2,153,A major,11B
+flute_Cs6_05_forte_normal.mp3,,670,110,A major,11B
+flute_Cs6_05_mezzo-forte_normal.mp3,,14,107,A major,11B
+flute_Cs6_05_mezzo-piano_normal.mp3,,541 1,80,A major,11B
+flute_Cs6_05_pianissimo_normal.mp3,,375 1,147,A major,11B
+flute_Cs6_05_piano_normal.mp3,,181 2,107,A major,11B
+flute_Cs6_15_forte_normal.mp3,,672,82,A major,11B
+flute_Cs6_15_mezzo-forte_normal.mp3,,1197 2,78,A major,11B
+flute_Cs6_15_piano_normal.mp3,,183 2,150,A major,11B
+flute_Cs6_025_forte_normal.mp3,,1011 2,153,A major,11B
+flute_Cs6_025_mezzo-forte_normal.mp3,,13 1,83,A major,11B
+flute_Cs6_025_mezzo-piano_normal.mp3,,540 1,89,A major,11B
+flute_Cs6_025_pianissimo_normal.mp3,,993,107,A major,11B
+flute_Cs6_025_piano_normal.mp3,,180 2,87,A major,11B
+flute_Cs6_long_piano_normal.mp3,,872,82,A major,11B
+flute_Cs6_phrase_mezzo-forte_tremolo.mp3,,924,119,A minor,8A
+flute_Cs7_1_forte_normal.mp3,,1068 2,85,A minor,8A
+flute_Cs7_1_fortissimo_major-trill.mp3,,949 1,132,D minor,7A
+flute_Cs7_1_mezzo-forte_normal.mp3,,61 1,122,D minor,7A
+flute_Cs7_1_pianissimo_normal.mp3,,438,87,A major,11B
+flute_Cs7_1_piano_normal.mp3,,260 1,89,A major,11B
+flute_Cs7_05_forte_normal.mp3,,1067 2,105,A minor,8A
+flute_Cs7_05_mezzo-forte_normal.mp3,,60,109,A major,11B
+flute_Cs7_05_pianissimo_normal.mp3,,437,116,A major,11B
+flute_Cs7_05_piano_normal.mp3,,255 1,114,A major,11B
+flute_Cs7_15_forte_normal.mp3,,1253 1,101,D major,10B
+flute_Cs7_15_mezzo-forte_normal.mp3,,62 1,96,A major,11B
+flute_Cs7_15_pianissimo_normal.mp3,,439 1,119,A major,11B
+flute_Cs7_15_piano_normal.mp3,,261 1,78,A major,11B
+flute_Cs7_025_forte_normal.mp3,,1066 2,112,D major,10B
+flute_Cs7_025_mezzo-forte_normal.mp3,,59,127,A minor,8A
+flute_Cs7_025_pianissimo_normal.mp3,,436 1,144,A minor,8A
+flute_Cs7_025_piano_normal.mp3,,258 1,123,A major,11B
+flute_D4_1_forte_normal.mp3,,553 1,80,D minor,7A
+flute_D4_1_mezzo-forte_normal.mp3,,1100 1,147,D minor,7A
+flute_D4_1_mezzo-piano_normal.mp3,,450 1,153,D minor,7A
+flute_D4_1_pianissimo_normal.mp3,,965 1,99,D minor,7A
+flute_D4_1_piano_normal.mp3,,77 1,104,D minor,7A
+flute_D4_05_forte_normal.mp3,,552 1,105,D minor,7A
+flute_D4_05_mezzo-forte_normal.mp3,,1099 1,78,D minor,7A
+flute_D4_05_mezzo-piano_normal.mp3,,449 1,121,D major,10B
+flute_D4_05_pianissimo_normal.mp3,,964 1,107,D minor,7A
+flute_D4_05_piano_normal.mp3,,76 1,111,D minor,7A
+flute_D4_15_forte_normal.mp3,,554 1,121,D minor,7A
+flute_D4_15_mezzo-forte_normal.mp3,,1101 1,144,D major,10B
+flute_D4_15_mezzo-piano_normal.mp3,,451 1,87,D minor,7A
+flute_D4_15_piano_normal.mp3,,1284,99,D minor,7A
+flute_D4_025_forte_normal.mp3,,551 1,123,D minor,7A
+flute_D4_025_mezzo-forte_normal.mp3,,1098,112,D minor,7A
+flute_D4_025_mezzo-piano_normal.mp3,,448 1,129,D minor,7A
+flute_D4_025_pianissimo_normal.mp3,,963 1,88,D minor,7A
+flute_D4_025_piano_normal.mp3,,75 1,117,D minor,7A
+flute_D5_1_forte_normal.mp3,,607,83,D minor,7A
+flute_D5_1_mezzo-forte_normal.mp3,,1148,83,D minor,7A
+flute_D5_1_mezzo-piano_normal.mp3,,498 1,153,D minor,7A
+flute_D5_1_pianissimo_normal.mp3,,333 1,150,D minor,7A
+flute_D5_1_piano_normal.mp3,,125 2,150,D minor,7A
+flute_D5_05_forte_normal.mp3,,606 1,107,D minor,7A
+flute_D5_05_mezzo-forte_normal.mp3,,1147 1,111,D major,10B
+flute_D5_05_mezzo-piano_normal.mp3,,497 1,83,D minor,7A
+flute_D5_05_pianissimo_normal.mp3,,332 1,99,D major,10B
+flute_D5_05_piano_normal.mp3,,1328 1,85,D major,10B
+flute_D5_15_forte_normal.mp3,,608 1,127,D minor,7A
+flute_D5_15_mezzo-forte_normal.mp3,,1149 2,107,D minor,7A
+flute_D5_15_mezzo-piano_normal.mp3,,499 1,119,D minor,7A
+flute_D5_15_piano_normal.mp3,,1330 1,144,D minor,7A
+flute_D5_025_forte_normal.mp3,,605,147,D minor,7A
+flute_D5_025_mezzo-forte_normal.mp3,,1146 1,121,D minor,7A
+flute_D5_025_mezzo-piano_normal.mp3,,496 1,153,D minor,7A
+flute_D5_025_pianissimo_normal.mp3,,331 1,99,D minor,7A
+flute_D5_025_piano_normal.mp3,,123 2,80,D major,10B
+flute_D5_long_piano_normal.mp3,,861 1,101,D minor,7A
+flute_D5_phrase_mezzo-forte_double-tonguing.mp3,,780,90,A major,11B
+flute_D5_phrase_mezzo-forte_fluttertonguing.mp3,,850,134,D minor,7A
+flute_D5_phrase_mezzo-forte_legato.mp3,,749 1,113,A minor,8A
+flute_D5_phrase_mezzo-forte_staccatissimo.mp3,,809,97,A minor,8A
+flute_D5_phrase_mezzo-forte_staccato.mp3,,787,85,A minor,8A
+flute_D5_phrase_mezzo-forte_tenuto.mp3,,791,94,A minor,8A
+flute_D5_phrase_mezzo-forte_tongued-slur.mp3,,842,115,A minor,8A
+flute_D5_phrase_mezzo-forte_triple-tonguing.mp3,,834,128,A major,11B
+flute_D6_1_forte_normal.mp3,,1237 2,80,D minor,7A
+flute_D6_1_mezzo-forte_normal.mp3,,19 1,85,D minor,7A
+flute_D6_1_pianissimo_normal.mp3,,379 1,89,D minor,7A
+flute_D6_1_piano_normal.mp3,,186 2,78,D minor,7A
+flute_D6_05_forte_normal.mp3,,1055 1,83,D major,10B
+flute_D6_05_mezzo-forte_normal.mp3,,1199 2,112,D minor,7A
+flute_D6_05_pianissimo_normal.mp3,,386 1,107,A minor,8A
+flute_D6_05_piano_normal.mp3,,185 2,107,A major,11B
+flute_D6_15_forte_normal.mp3,,676,82,D major,10B
+flute_D6_15_mezzo-forte_normal.mp3,,20 1,147,D minor,7A
+flute_D6_15_pianissimo_normal.mp3,,388 1,153,D major,10B
+flute_D6_15_piano_normal.mp3,,187 2,107,D minor,7A
+flute_D6_025_forte_normal.mp3,,1012 2,91,A minor,8A
+flute_D6_025_mezzo-forte_normal.mp3,,17,87,A minor,8A
+flute_D6_025_pianissimo_normal.mp3,,385,89,A minor,8A
+flute_D6_025_piano_normal.mp3,,184 2,153,A minor,8A
+flute_D6_long_piano_normal.mp3,,873 1,101,D minor,7A
+flute_D6_phrase_mezzo-forte_double-tonguing.mp3,,773,94,A minor,8A
+flute_D6_phrase_mezzo-forte_fluttertonguing.mp3,,853,129,A minor,8A
+flute_D6_phrase_mezzo-forte_nonlegato.mp3,,779,91,A minor,8A
+flute_D6_phrase_mezzo-forte_staccato.mp3,,784,93,A minor,8A
+flute_D6_phrase_mezzo-forte_tenuto.mp3,,803,95,A major,11B
+flute_D6_phrase_mezzo-forte_tongued-slur.mp3,,845 1,115,A minor,8A
+flute_D6_phrase_mezzo-forte_triple-tonguing.mp3,,837,91,A minor,8A
+flute_D7_1_forte_normal.mp3,,1256 1,74,A minor,8A
+flute_D7_1_fortissimo_normal.mp3,,1079 1,124,A minor,8A
+flute_D7_1_mezzo-forte_normal.mp3,,65 1,104,A minor,8A
+flute_D7_1_piano_normal.mp3,,264 1,96,D major,10B
+flute_D7_05_forte_normal.mp3,,726 1,106,D major,10B
+flute_D7_05_fortissimo_normal.mp3,,1078 1,71,A minor,8A
+flute_D7_05_mezzo-forte_normal.mp3,,64 1,102,D minor,7A
+flute_D7_05_piano_normal.mp3,,263 1,121,D major,10B
+flute_D7_15_forte_normal.mp3,,728 1,80,D major,10B
+flute_D7_15_fortissimo_normal.mp3,,1080 1,91,A minor,8A
+flute_D7_15_mezzo-forte_normal.mp3,,66 1,112,A minor,8A
+flute_D7_15_piano_normal.mp3,,265 1,142,D major,10B
+flute_D7_025_forte_normal.mp3,,1254 1,107,A minor,8A
+flute_D7_025_fortissimo_normal.mp3,,1077 1,99,A major,11B
+flute_D7_025_mezzo-forte_normal.mp3,,63 1,83,D major,10B
+flute_D7_025_piano_normal.mp3,,262 1,127,A minor,8A
+flute_Ds4_1_forte_normal.mp3,,557 1,107,E♭ minor,2A
+flute_Ds4_1_mezzo-forte_normal.mp3,,1104,80,E♭ minor,2A
+flute_Ds4_1_mezzo-piano_normal.mp3,,454 1,78,E♭ minor,2A
+flute_Ds4_1_pianissimo_normal.mp3,,282,107,E♭ minor,2A
+flute_Ds4_1_piano_normal.mp3,,1287 2,101,E♭ minor,2A
+flute_Ds4_05_forte_normal.mp3,,556 1,108,E♭ minor,2A
+flute_Ds4_05_mezzo-forte_normal.mp3,,1103,129,E♭ minor,2A
+flute_Ds4_05_mezzo-piano_normal.mp3,,453 1,102,E♭ minor,2A
+flute_Ds4_05_pianissimo_normal.mp3,,281,101,E♭ minor,2A
+flute_Ds4_05_piano_normal.mp3,,80 1,107,E♭ minor,2A
+flute_Ds4_15_forte_normal.mp3,,558,78,E♭ minor,2A
+flute_Ds4_15_mezzo-forte_normal.mp3,,1105,121,E♭ minor,2A
+flute_Ds4_15_mezzo-piano_normal.mp3,,455 1,85,E♭ minor,2A
+flute_Ds4_15_piano_normal.mp3,,1288 2,80,E♭ minor,2A
+flute_Ds4_025_forte_normal.mp3,,555 1,87,E♭ major,5B
+flute_Ds4_025_mezzo-forte_normal.mp3,,1102 1,127,A major,11B
+flute_Ds4_025_mezzo-piano_normal.mp3,,452 1,147,E♭ minor,2A
+flute_Ds4_025_pianissimo_normal.mp3,,280 1,94,E♭ major,5B
+flute_Ds4_025_piano_normal.mp3,,1285 2,127,E♭ minor,2A
+flute_Ds4_long_mezzo-forte_major-trill.mp3,,926,104,F major,7B
+flute_Ds4_long_mezzo-forte_minor-trill.mp3,,925,104,E minor,9A
+flute_Ds4_very-long_cresc-decresc_normal.mp3,,1366 1,107,E♭ minor,2A
+flute_Ds5_1_forte_normal.mp3,,619 1,104,A minor,8A
+flute_Ds5_1_mezzo-forte_normal.mp3,,1152,83,A minor,8A
+flute_Ds5_1_mezzo-piano_normal.mp3,,502 1,150,E♭ minor,2A
+flute_Ds5_1_pianissimo_normal.mp3,,978 1,144,E♭ minor,2A
+flute_Ds5_1_piano_normal.mp3,,1333,104,E♭ minor,2A
+flute_Ds5_05_forte_normal.mp3,,630,153,A major,11B
+flute_Ds5_05_mezzo-forte_normal.mp3,,1151 1,115,E♭ minor,2A
+flute_Ds5_05_mezzo-piano_normal.mp3,,501 1,82,E♭ minor,2A
+flute_Ds5_05_pianissimo_normal.mp3,,977 1,107,A minor,8A
+flute_Ds5_05_piano_normal.mp3,,1332 1,107,A minor,8A
+flute_Ds5_15_forte_normal.mp3,,620 1,78,E♭ minor,2A
+flute_Ds5_15_mezzo-forte_normal.mp3,,1153 2,107,A major,11B
+flute_Ds5_15_mezzo-piano_normal.mp3,,503 1,139,E♭ minor,2A
+flute_Ds5_15_pianissimo_normal.mp3,,337 1,82,E♭ minor,2A
+flute_Ds5_15_piano_normal.mp3,,1334 1,78,E♭ major,5B
+flute_Ds5_025_forte_normal.mp3,,617 1,136,A minor,8A
+flute_Ds5_025_mezzo-forte_normal.mp3,,1150 1,127,D minor,7A
+flute_Ds5_025_mezzo-piano_normal.mp3,,500,136,A minor,8A
+flute_Ds5_025_pianissimo_normal.mp3,,976 1,104,A major,11B
+flute_Ds5_025_piano_normal.mp3,,1331,123,A minor,8A
+flute_Ds5_long_mezzo-forte_major-trill.mp3,,943 1,104,B♭ major,6B
+flute_Ds5_long_mezzo-forte_minor-trill.mp3,,942 1,103,A minor,8A
+flute_Ds5_long_mezzo-forte_tremolo.mp3,,918,101,G minor,6A
+flute_Ds5_long_piano_normal.mp3,,858,104,A minor,8A
+flute_Ds5_very-long_cresc-decresc_normal.mp3,,1370,77,E♭ minor,2A
+flute_Ds6_1_forte_normal.mp3,,1004 1,80,A minor,8A
+flute_Ds6_1_mezzo-forte_normal.mp3,,23 1,85,A minor,8A
+flute_Ds6_1_pianissimo_normal.mp3,,383,96,A major,11B
+flute_Ds6_1_piano_normal.mp3,,190 2,80,D minor,7A
+flute_Ds6_05_forte_normal.mp3,,1016 2,144,D minor,7A
+flute_Ds6_05_mezzo-forte_normal.mp3,,22 1,80,A minor,8A
+flute_Ds6_05_pianissimo_normal.mp3,,382 1,99,A minor,8A
+flute_Ds6_05_piano_normal.mp3,,189 1,124,A minor,8A
+flute_Ds6_15_forte_normal.mp3,,684,94,A minor,8A
+flute_Ds6_15_mezzo-forte_normal.mp3,,1204 1,147,A minor,8A
+flute_Ds6_15_pianissimo_normal.mp3,,392 1,99,A minor,8A
+flute_Ds6_15_piano_normal.mp3,,191 2,83,A minor,8A
+flute_Ds6_025_forte_normal.mp3,,681,83,A minor,8A
+flute_Ds6_025_mezzo-forte_normal.mp3,,21 1,134,A minor,8A
+flute_Ds6_025_pianissimo_normal.mp3,,389 1,117,A minor,8A
+flute_Ds6_025_piano_normal.mp3,,188 1,89,A minor,8A
+flute_Ds6_long_mezzo-forte_major-trill.mp3,,936 1,101,A minor,8A
+flute_Ds6_long_mezzo-forte_minor-trill.mp3,,935 1,136,A minor,8A
+flute_Ds6_long_piano_normal.mp3,,875 1,104,A minor,8A
+flute_Ds6_phrase_mezzo-forte_legato.mp3,,751 1,104,A minor,8A
+flute_Ds6_very-long_cresc-decresc_normal.mp3,,1374,79,A major,11B
+flute_Ds7_1_forte_normal.mp3,,731 1,109,A major,11B
+flute_Ds7_1_piano_normal.mp3,,268 1,116,A minor,8A
+flute_Ds7_05_forte_normal.mp3,,730 1,119,A minor,8A
+flute_Ds7_05_fortissimo_normal.mp3,,1075 1,94,A minor,8A
+flute_Ds7_05_piano_normal.mp3,,267 1,132,A major,11B
+flute_Ds7_15_forte_normal.mp3,,732 1,99,D major,10B
+flute_Ds7_15_piano_normal.mp3,,269 1,94,D minor,7A
+flute_Ds7_025_forte_normal.mp3,,1074,88,A minor,8A
+flute_Ds7_025_fortissimo_normal.mp3,,1076 1,94,A minor,8A
+flute_Ds7_025_piano_normal.mp3,,266 1,85,F minor,4A
+flute_E4_1_forte_normal.mp3,,561,83,A minor,8A
+flute_E4_1_mezzo-forte_normal.mp3,,1108,80,A minor,8A
+flute_E4_1_mezzo-piano_normal.mp3,,458 1,96,A minor,8A
+flute_E4_1_pianissimo_normal.mp3,,285,85,A minor,8A
+flute_E4_1_piano_normal.mp3,,85,134,A minor,8A
+flute_E4_05_forte_normal.mp3,,560,102,E minor,9A
+flute_E4_05_mezzo-forte_normal.mp3,,1107,80,A minor,8A
+flute_E4_05_mezzo-piano_normal.mp3,,457 1,78,E minor,9A
+flute_E4_05_pianissimo_normal.mp3,,284,107,A minor,8A
+flute_E4_05_piano_normal.mp3,,1290 2,104,A minor,8A
+flute_E4_15_forte_normal.mp3,,562,147,A minor,8A
+flute_E4_15_mezzo-forte_normal.mp3,,1109,78,A minor,8A
+flute_E4_15_mezzo-piano_normal.mp3,,459,112,E minor,9A
+flute_E4_15_pianissimo_normal.mp3,,286,104,A minor,8A
+flute_E4_15_piano_normal.mp3,,1292 1,134,A minor,8A
+flute_E4_025_forte_normal.mp3,,559,82,E major,12B
+flute_E4_025_mezzo-forte_normal.mp3,,1106,129,E minor,9A
+flute_E4_025_mezzo-piano_normal.mp3,,456 1,136,E minor,9A
+flute_E4_025_pianissimo_normal.mp3,,283,94,A minor,8A
+flute_E4_025_piano_normal.mp3,,1289 1,115,A minor,8A
+flute_E4_very-long_cresc-decresc_normal.mp3,,1378,77,A minor,8A
+flute_E4_very-long_forte_normal.mp3,,899 1,150,A minor,8A
+flute_E4_very-long_pianissimo_normal.mp3,,896 1,139,A minor,8A
+flute_E5_1_forte_normal.mp3,,623,80,A minor,8A
+flute_E5_1_mezzo-forte_normal.mp3,,1156,85,A minor,8A
+flute_E5_1_mezzo-piano_normal.mp3,,3,107,A minor,8A
+flute_E5_1_pianissimo_normal.mp3,,979 1,85,A minor,8A
+flute_E5_1_piano_normal.mp3,,133 2,80,A minor,8A
+flute_E5_05_forte_normal.mp3,,622 1,123,A minor,8A
+flute_E5_05_mezzo-forte_normal.mp3,,1155 2,106,A minor,8A
+flute_E5_05_mezzo-piano_normal.mp3,,505 1,104,A minor,8A
+flute_E5_05_pianissimo_normal.mp3,,339 1,87,A minor,8A
+flute_E5_05_piano_normal.mp3,,1336 1,107,A minor,8A
+flute_E5_15_forte_normal.mp3,,624 1,78,A minor,8A
+flute_E5_15_mezzo-forte_normal.mp3,,1161 1,134,A major,11B
+flute_E5_15_mezzo-piano_normal.mp3,,507 1,142,A minor,8A
+flute_E5_15_piano_normal.mp3,,1337,96,A major,11B
+flute_E5_025_forte_normal.mp3,,633 1,121,A minor,8A
+flute_E5_025_mezzo-forte_normal.mp3,,1158,147,A minor,8A
+flute_E5_025_mezzo-piano_normal.mp3,,504 1,114,A minor,8A
+flute_E5_025_pianissimo_normal.mp3,,338 1,91,A minor,8A
+flute_E5_025_piano_normal.mp3,,131 2,132,A minor,8A
+flute_E5_long_piano_normal.mp3,,859 1,80,A minor,8A
+flute_E6_1_forte_normal.mp3,,1361,78,A minor,8A
+flute_E6_1_mezzo-forte_normal.mp3,,27 1,82,A minor,8A
+flute_E6_1_pianissimo_normal.mp3,,395 1,87,A major,11B
+flute_E6_1_piano_normal.mp3,,194 1,153,A minor,8A
+flute_E6_05_forte_normal.mp3,,1056,153,A minor,8A
+flute_E6_05_mezzo-forte_normal.mp3,,26,107,A minor,8A
+flute_E6_05_pianissimo_normal.mp3,,394 1,96,A minor,8A
+flute_E6_05_piano_normal.mp3,,193 1,80,A major,11B
+flute_E6_15_forte_normal.mp3,,688,83,A minor,8A
+flute_E6_15_mezzo-forte_normal.mp3,,28,144,A minor,8A
+flute_E6_15_pianissimo_normal.mp3,,396 1,142,A major,11B
+flute_E6_15_piano_normal.mp3,,195 2,99,A major,11B
+flute_E6_025_forte_normal.mp3,,1006 1,107,A minor,8A
+flute_E6_025_mezzo-forte_normal.mp3,,1205 2,82,A minor,8A
+flute_E6_025_pianissimo_normal.mp3,,393,139,A major,11B
+flute_E6_025_piano_normal.mp3,,192 2,142,A minor,8A
+flute_E6_long_piano_normal.mp3,,878,144,A minor,8A
+flute_E6_phrase_forte_normal.mp3,,1359 1,81,A minor,8A
+flute_E7_1_forte_normal.mp3,,735 1,106,A major,11B
+flute_E7_1_piano_normal.mp3,,272 1,107,D major,10B
+flute_E7_05_forte_normal.mp3,,734 1,95,D major,10B
+flute_E7_05_piano_normal.mp3,,271 1,100,A major,11B
+flute_E7_15_forte_normal.mp3,,736 1,94,A major,11B
+flute_E7_15_piano_normal.mp3,,273 1,147,D major,10B
+flute_E7_025_forte_normal.mp3,,1262 1,89,A minor,8A
+flute_E7_025_piano_normal.mp3,,270 1,82,A minor,8A
+flute_F4_1_forte_normal.mp3,,565,104,F major,7B
+flute_F4_1_mezzo-forte_normal.mp3,,1112 1,80,F major,7B
+flute_F4_1_mezzo-piano_normal.mp3,,462 1,107,F major,7B
+flute_F4_1_pianissimo_normal.mp3,,289,96,F major,7B
+flute_F4_1_piano_normal.mp3,,89 1,99,F major,7B
+flute_F4_05_forte_normal.mp3,,564,106,F major,7B
+flute_F4_05_mezzo-forte_normal.mp3,,1111 1,82,F major,7B
+flute_F4_05_mezzo-piano_normal.mp3,,461 1,147,F major,7B
+flute_F4_05_pianissimo_normal.mp3,,288,150,F major,7B
+flute_F4_05_piano_normal.mp3,,88 1,107,F major,7B
+flute_F4_15_forte_normal.mp3,,566,80,F major,7B
+flute_F4_15_mezzo-forte_normal.mp3,,1113 2,119,F major,7B
+flute_F4_15_mezzo-piano_normal.mp3,,463 1,94,F major,7B
+flute_F4_15_pianissimo_normal.mp3,,967 1,99,F major,7B
+flute_F4_15_piano_normal.mp3,,90,107,F major,7B
+flute_F4_025_forte_normal.mp3,,563,134,F major,7B
+flute_F4_025_mezzo-forte_normal.mp3,,1110 1,150,F major,7B
+flute_F4_025_mezzo-piano_normal.mp3,,460 1,144,F major,7B
+flute_F4_025_pianissimo_normal.mp3,,287,112,F major,7B
+flute_F4_025_piano_normal.mp3,,87 1,91,F major,7B
+flute_F4_phrase_mezzo-forte_double-tonguing.mp3,,767 1,125,D minor,7A
+flute_F4_phrase_mezzo-forte_fluttertonguing.mp3,,847,68,D minor,7A
+flute_F4_phrase_mezzo-forte_legato.mp3,,746,107,D minor,7A
+flute_F4_phrase_mezzo-forte_nonlegato.mp3,,761 1,88,D minor,7A
+flute_F4_phrase_mezzo-forte_normal.mp3,,1358,80,D minor,7A
+flute_F4_phrase_mezzo-forte_staccato.mp3,,794,91,A minor,8A
+flute_F4_phrase_mezzo-forte_tenuto.mp3,,790,91,D minor,7A
+flute_F4_phrase_mezzo-forte_tongued-slur.mp3,,839 1,77,D minor,7A
+flute_F4_phrase_mezzo-forte_triple-tonguing.mp3,,823,97,D minor,7A
+flute_F5_1_forte_normal.mp3,,627 1,150,F major,7B
+flute_F5_1_mezzo-forte_normal.mp3,,1164 1,80,F major,7B
+flute_F5_1_mezzo-piano_normal.mp3,,510 1,104,F major,7B
+flute_F5_1_pianissimo_normal.mp3,,1356 1,101,A minor,8A
+flute_F5_1_piano_normal.mp3,,1340,80,F major,7B
+flute_F5_05_forte_normal.mp3,,626,101,F major,7B
+flute_F5_05_mezzo-forte_normal.mp3,,1163 2,111,F major,7B
+flute_F5_05_mezzo-piano_normal.mp3,,509 1,116,F major,7B
+flute_F5_05_pianissimo_normal.mp3,,981 1,104,D minor,7A
+flute_F5_05_piano_normal.mp3,,245,104,C# minor,
+flute_F5_15_forte_normal.mp3,,628,147,F major,7B
+flute_F5_15_mezzo-forte_normal.mp3,,1165 2,89,F major,7B
+flute_F5_15_mezzo-piano_normal.mp3,,511 1,150,F major,7B
+flute_F5_15_pianissimo_normal.mp3,,348 1,96,F major,7B
+flute_F5_15_piano_normal.mp3,,1341,83,F major,7B
+flute_F5_025_forte_normal.mp3,,625 1,150,F major,7B
+flute_F5_025_mezzo-forte_normal.mp3,,1162,127,D minor,7A
+flute_F5_025_mezzo-piano_normal.mp3,,508 1,153,B♭ major,6B
+flute_F5_025_pianissimo_normal.mp3,,980 1,85,A minor,8A
+flute_F5_025_piano_normal.mp3,,135 2,89,F major,7B
+flute_F6_1_forte_normal.mp3,,691,83,D minor,7A
+flute_F6_1_mezzo-forte_normal.mp3,,1209 2,82,A minor,8A
+flute_F6_1_pianissimo_normal.mp3,,399 1,96,A minor,8A
+flute_F6_1_piano_normal.mp3,,210 1,87,A minor,8A
+flute_F6_05_forte_normal.mp3,,1240 1,78,A minor,8A
+flute_F6_05_mezzo-forte_normal.mp3,,1208,107,A minor,8A
+flute_F6_05_pianissimo_normal.mp3,,398 1,91,A major,11B
+flute_F6_05_piano_normal.mp3,,197 2,107,A minor,8A
+flute_F6_15_forte_normal.mp3,,1032 1,94,F major,7B
+flute_F6_15_mezzo-forte_normal.mp3,,32,153,A minor,8A
+flute_F6_15_pianissimo_normal.mp3,,400 1,85,A minor,8A
+flute_F6_15_piano_normal.mp3,,211,89,A minor,8A
+flute_F6_025_forte_normal.mp3,,689,80,A minor,8A
+flute_F6_025_mezzo-forte_normal.mp3,,29 1,147,A minor,8A
+flute_F6_025_pianissimo_normal.mp3,,397,150,A major,11B
+flute_F6_025_piano_normal.mp3,,208 1,136,A minor,8A
+flute_F6_long_piano_normal.mp3,,880,101,A minor,8A
+flute_F7_1_forte_normal.mp3,,743,107,A minor,8A
+flute_F7_05_forte_normal.mp3,,742,75,A minor,8A
+flute_F7_15_forte_normal.mp3,,744,78,A minor,8A
+flute_F7_025_forte_normal.mp3,,737 1,85,A minor,8A
+flute_Fs4_1_forte_normal.mp3,,569,147,F# minor,
+flute_Fs4_1_mezzo-forte_normal.mp3,,1116 1,89,F# minor,
+flute_Fs4_1_mezzo-piano_normal.mp3,,466 1,80,F# minor,
+flute_Fs4_1_pianissimo_normal.mp3,,969 1,107,F# minor,
+flute_Fs4_1_piano_normal.mp3,,1298,147,F# minor,
+flute_Fs4_05_forte_normal.mp3,,568,111,F# minor,
+flute_Fs4_05_mezzo-forte_normal.mp3,,1115 2,118,F# minor,
+flute_Fs4_05_mezzo-piano_normal.mp3,,2,153,F# minor,
+flute_Fs4_05_pianissimo_normal.mp3,,291,134,F# minor,
+flute_Fs4_05_piano_normal.mp3,,1297 2,107,D major,10B
+flute_Fs4_15_forte_normal.mp3,,570,78,F# minor,
+flute_Fs4_15_mezzo-forte_normal.mp3,,1117 2,147,F# minor,
+flute_Fs4_15_mezzo-piano_normal.mp3,,467,132,F# minor,
+flute_Fs4_15_piano_normal.mp3,,94,139,F# minor,
+flute_Fs4_025_forte_normal.mp3,,567,147,F# minor,
+flute_Fs4_025_mezzo-forte_normal.mp3,,1114 1,117,F# minor,
+flute_Fs4_025_mezzo-piano_normal.mp3,,464 1,136,F# minor,
+flute_Fs4_025_pianissimo_normal.mp3,,968 1,104,B minor,10A
+flute_Fs4_025_piano_normal.mp3,,91 1,101,A major,11B
+flute_Fs4_long_mezzo-forte_major-trill.mp3,,928,115,F# minor,
+flute_Fs4_long_mezzo-forte_minor-trill.mp3,,927 1,107,D major,10B
+flute_Fs4_very-long_cresc-decresc_normal.mp3,,1367 1,80,F# minor,
+flute_Fs5_1_forte_normal.mp3,,643 1,107,F# minor,
+flute_Fs5_1_mezzo-forte_normal.mp3,,1168 1,82,B minor,10A
+flute_Fs5_1_mezzo-piano_normal.mp3,,514 1,80,F# minor,
+flute_Fs5_1_pianissimo_normal.mp3,,984 1,91,F# minor,
+flute_Fs5_1_piano_normal.mp3,,1344 1,153,F# minor,
+flute_Fs5_05_forte_normal.mp3,,642,106,F# minor,
+flute_Fs5_05_mezzo-forte_normal.mp3,,1167 1,133,D major,10B
+flute_Fs5_05_mezzo-piano_normal.mp3,,513 1,107,F# minor,
+flute_Fs5_05_pianissimo_normal.mp3,,983 1,107,D major,10B
+flute_Fs5_05_piano_normal.mp3,,1343,107,F# minor,
+flute_Fs5_15_forte_normal.mp3,,644 1,94,F# minor,
+flute_Fs5_15_mezzo-forte_normal.mp3,,1169 2,104,F# minor,
+flute_Fs5_15_mezzo-piano_normal.mp3,,515 1,153,F# minor,
+flute_Fs5_15_pianissimo_normal.mp3,,352 1,85,A major,11B
+flute_Fs5_15_piano_normal.mp3,,142 2,94,F# minor,
+flute_Fs5_025_forte_normal.mp3,,641 1,147,A major,11B
+flute_Fs5_025_mezzo-forte_normal.mp3,,1166,129,A major,11B
+flute_Fs5_025_mezzo-piano_normal.mp3,,512 1,150,F# minor,
+flute_Fs5_025_pianissimo_normal.mp3,,349 1,104,A major,11B
+flute_Fs5_025_piano_normal.mp3,,1342 1,109,A major,11B
+flute_Fs5_long_mezzo-forte_major-trill.mp3,,945 1,104,F# minor,
+flute_Fs5_long_mezzo-forte_minor-trill.mp3,,944,107,D major,10B
+flute_Fs5_very-long_cresc-decresc_normal.mp3,,1379,129,F# minor,
+flute_Fs5_very-long_forte_normal.mp3,,900,91,F# minor,
+flute_Fs5_very-long_pianissimo_normal.mp3,,897 1,136,A major,11B
+flute_Fs6_1_forte_normal.mp3,,1059,82,A major,11B
+flute_Fs6_1_mezzo-forte_normal.mp3,,1212,83,A minor,8A
+flute_Fs6_1_mezzo-piano_normal.mp3,,951 1,134,A major,11B
+flute_Fs6_1_pianissimo_normal.mp3,,403 1,107,D major,10B
+flute_Fs6_1_piano_normal.mp3,,214 1,83,A major,11B
+flute_Fs6_05_forte_normal.mp3,,1025 2,107,D minor,7A
+flute_Fs6_05_mezzo-forte_normal.mp3,,1211 2,115,A major,11B
+flute_Fs6_05_pianissimo_normal.mp3,,402 1,107,A major,11B
+flute_Fs6_05_piano_normal.mp3,,213 1,80,A major,11B
+flute_Fs6_15_forte_normal.mp3,,696 1,94,D major,10B
+flute_Fs6_15_mezzo-forte_normal.mp3,,1213 1,80,A major,11B
+flute_Fs6_15_pianissimo_normal.mp3,,404 1,99,A major,11B
+flute_Fs6_15_piano_normal.mp3,,215 1,82,A minor,8A
+flute_Fs6_025_forte_normal.mp3,,1024 2,115,A minor,8A
+flute_Fs6_025_mezzo-forte_normal.mp3,,33 1,134,A minor,8A
+flute_Fs6_025_pianissimo_normal.mp3,,401,142,A major,11B
+flute_Fs6_025_piano_normal.mp3,,212,153,A minor,8A
+flute_Fs6_long_mezzo-forte_major-trill.mp3,,938 1,127,A major,11B
+flute_Fs6_long_mezzo-forte_minor-trill.mp3,,937 1,109,A major,11B
+flute_Fs6_long_piano_normal.mp3,,885 1,77,A major,11B
+flute_Fs6_very-long_cresc-decresc_normal.mp3,,1375 1,78,A major,11B
+flute_G4_1_forte_normal.mp3,,573,80,G minor,6A
+flute_G4_1_mezzo-forte_normal.mp3,,1120 1,78,G minor,6A
+flute_G4_1_mezzo-piano_normal.mp3,,470,150,G minor,6A
+flute_G4_1_pianissimo_normal.mp3,,294,107,G major,9B
+flute_G4_1_piano_normal.mp3,,97 1,150,G minor,6A
+flute_G4_05_forte_normal.mp3,,572,114,G minor,6A
+flute_G4_05_mezzo-forte_normal.mp3,,1119 2,103,G minor,6A
+flute_G4_05_mezzo-piano_normal.mp3,,469 1,150,G minor,6A
+flute_G4_05_pianissimo_normal.mp3,,293,80,A minor,8A
+flute_G4_05_piano_normal.mp3,,1300,104,G minor,6A
+flute_G4_15_forte_normal.mp3,,574,150,G minor,6A
+flute_G4_15_mezzo-forte_normal.mp3,,1121 1,78,G minor,6A
+flute_G4_15_mezzo-piano_normal.mp3,,471 1,83,G minor,6A
+flute_G4_15_piano_normal.mp3,,1302,94,G major,9B
+flute_G4_025_forte_normal.mp3,,571,147,G major,9B
+flute_G4_025_mezzo-forte_normal.mp3,,1118 1,127,G minor,6A
+flute_G4_025_mezzo-piano_normal.mp3,,468 1,153,G minor,6A
+flute_G4_025_pianissimo_normal.mp3,,292,107,A minor,8A
+flute_G4_025_piano_normal.mp3,,1299 1,136,A minor,8A
+flute_G4_phrase_mezzo-forte_double-tonguing.mp3,,816,112,A major,11B
+flute_G4_phrase_mezzo-forte_fluttertonguing.mp3,,848,125,A major,11B
+flute_G4_phrase_mezzo-forte_legato.mp3,,747,71,A major,11B
+flute_G4_phrase_mezzo-forte_nonlegato.mp3,,776,91,A major,11B
+flute_G4_phrase_mezzo-forte_staccatissimo.mp3,,807,101,A major,11B
+flute_G4_phrase_mezzo-forte_staccato.mp3,,795,96,A major,11B
+flute_G4_phrase_mezzo-forte_tenuto.mp3,,800,90,A major,11B
+flute_G4_phrase_mezzo-forte_tongued-slur.mp3,,754 1,94,A major,11B
+flute_G4_phrase_mezzo-forte_triple-tonguing.mp3,,832,96,A major,11B
+flute_G5_1_forte_normal.mp3,,647 1,80,G major,9B
+flute_G5_1_mezzo-forte_normal.mp3,,1172 1,80,G minor,6A
+flute_G5_1_mezzo-piano_normal.mp3,,518 1,147,G minor,6A
+flute_G5_1_pianissimo_normal.mp3,,355 1,147,G major,9B
+flute_G5_1_piano_normal.mp3,,1348,107,A minor,8A
+flute_G5_05_forte_normal.mp3,,646 1,124,A minor,8A
+flute_G5_05_mezzo-forte_normal.mp3,,1171 2,123,G minor,6A
+flute_G5_05_mezzo-piano_normal.mp3,,517 1,82,D minor,7A
+flute_G5_05_pianissimo_normal.mp3,,986 1,85,G major,9B
+flute_G5_05_piano_normal.mp3,,144 2,107,G minor,6A
+flute_G5_15_forte_normal.mp3,,648 1,91,G minor,6A
+flute_G5_15_mezzo-forte_normal.mp3,,1173 1,78,G minor,6A
+flute_G5_15_mezzo-piano_normal.mp3,,519 1,78,G minor,6A
+flute_G5_15_pianissimo_normal.mp3,,356 1,89,G major,9B
+flute_G5_15_piano_normal.mp3,,1349 1,107,G major,9B
+flute_G5_025_forte_normal.mp3,,645 1,142,G minor,6A
+flute_G5_025_mezzo-forte_normal.mp3,,1170 1,123,A minor,8A
+flute_G5_025_mezzo-piano_normal.mp3,,516,89,G minor,6A
+flute_G5_025_pianissimo_normal.mp3,,353 1,153,A minor,8A
+flute_G5_025_piano_normal.mp3,,1346 1,147,D minor,7A
+flute_G5_long_piano_normal.mp3,,863 1,96,A minor,8A
+flute_G5_phrase_mezzo-forte_double-tonguing.mp3,,771,129,D minor,7A
+flute_G5_phrase_mezzo-forte_fluttertonguing.mp3,,851,128,D major,10B
+flute_G5_phrase_mezzo-forte_legato.mp3,,750 1,71,D minor,7A
+flute_G5_phrase_mezzo-forte_staccatissimo.mp3,,810,101,A major,11B
+flute_G5_phrase_mezzo-forte_staccato.mp3,,798,101,D minor,7A
+flute_G5_phrase_mezzo-forte_tenuto.mp3,,792,94,D minor,7A
+flute_G5_phrase_mezzo-forte_tongued-slur.mp3,,757 1,99,D minor,7A
+flute_G5_phrase_mezzo-forte_triple-tonguing.mp3,,835,93,D minor,7A
+flute_G6_1_forte_normal.mp3,,699 1,83,A minor,8A
+flute_G6_1_mezzo-forte_normal.mp3,,1216 2,82,A minor,8A
+flute_G6_1_pianissimo_normal.mp3,,407 1,136,A minor,8A
+flute_G6_1_piano_normal.mp3,,218 1,153,A minor,8A
+flute_G6_05_forte_normal.mp3,,698 1,109,A major,11B
+flute_G6_05_mezzo-forte_normal.mp3,,37 1,78,A minor,8A
+flute_G6_05_pianissimo_normal.mp3,,406 1,107,D minor,7A
+flute_G6_05_piano_normal.mp3,,217 1,104,D minor,7A
+flute_G6_15_forte_normal.mp3,,700 1,123,D minor,7A
+flute_G6_15_fortissimo_normal.mp3,,1362,91,A minor,8A
+flute_G6_15_pianissimo_normal.mp3,,408 1,83,A major,11B
+flute_G6_15_piano_normal.mp3,,207,147,A major,11B
+flute_G6_025_forte_normal.mp3,,1036 1,104,A minor,8A
+flute_G6_025_mezzo-forte_normal.mp3,,36 1,107,A minor,8A
+flute_G6_025_mezzo-piano_normal.mp3,,952,91,A minor,8A
+flute_G6_025_pianissimo_normal.mp3,,405,119,D minor,7A
+flute_G6_025_piano_normal.mp3,,216 1,125,A minor,8A
+flute_G6_long_fortissimo_normal.mp3,,1363,87,A minor,8A
+flute_G6_long_piano_normal.mp3,,886 1,121,A minor,8A
+flute_Gs4_1_forte_normal.mp3,,577,80,A♭ minor,1A
+flute_Gs4_1_mezzo-forte_normal.mp3,,1124 1,83,A♭ minor,1A
+flute_Gs4_1_mezzo-piano_normal.mp3,,474,94,A♭ minor,1A
+flute_Gs4_1_pianissimo_normal.mp3,,297,134,A major,11B
+flute_Gs4_1_piano_normal.mp3,,101 1,78,A♭ minor,1A
+flute_Gs4_05_forte_normal.mp3,,576,107,A♭ minor,1A
+flute_Gs4_05_mezzo-forte_normal.mp3,,1123 2,109,A major,11B
+flute_Gs4_05_mezzo-piano_normal.mp3,,473 1,78,A♭ minor,1A
+flute_Gs4_05_pianissimo_normal.mp3,,304,107,A♭ minor,1A
+flute_Gs4_05_piano_normal.mp3,,100 1,122,A major,11B
+flute_Gs4_15_forte_normal.mp3,,578,82,A♭ minor,1A
+flute_Gs4_15_mezzo-forte_normal.mp3,,1125 2,153,A♭ minor,1A
+flute_Gs4_15_mezzo-piano_normal.mp3,,475 1,89,A♭ minor,1A
+flute_Gs4_15_pianissimo_normal.mp3,,298,150,A major,11B
+flute_Gs4_15_piano_normal.mp3,,102 1,87,A♭ minor,1A
+flute_Gs4_025_forte_normal.mp3,,575,153,A major,11B
+flute_Gs4_025_mezzo-forte_normal.mp3,,1122,153,A minor,8A
+flute_Gs4_025_mezzo-piano_normal.mp3,,472,147,A major,11B
+flute_Gs4_025_pianissimo_normal.mp3,,295,129,A major,11B
+flute_Gs4_025_piano_normal.mp3,,99 1,80,C# minor,
+flute_Gs5_1_forte_normal.mp3,,651 1,80,A major,11B
+flute_Gs5_1_mezzo-forte_normal.mp3,,1176 1,83,A major,11B
+flute_Gs5_1_mezzo-piano_normal.mp3,,522 1,78,A minor,8A
+flute_Gs5_1_pianissimo_normal.mp3,,987,153,A minor,8A
+flute_Gs5_1_piano_normal.mp3,,149 2,153,A major,11B
+flute_Gs5_05_forte_normal.mp3,,650 1,109,A major,11B
+flute_Gs5_05_mezzo-forte_normal.mp3,,1175 1,101,A major,11B
+flute_Gs5_05_mezzo-piano_normal.mp3,,521 1,82,A major,11B
+flute_Gs5_05_pianissimo_normal.mp3,,361 1,107,A minor,8A
+flute_Gs5_05_piano_normal.mp3,,148 2,150,C# minor,
+flute_Gs5_15_forte_normal.mp3,,652,125,A major,11B
+flute_Gs5_15_mezzo-forte_normal.mp3,,1177 2,107,A♭ minor,1A
+flute_Gs5_15_mezzo-piano_normal.mp3,,523 1,142,A major,11B
+flute_Gs5_15_piano_normal.mp3,,150 2,153,A major,11B
+flute_Gs5_025_forte_normal.mp3,,649 1,78,A minor,8A
+flute_Gs5_025_mezzo-forte_normal.mp3,,1174 1,144,A♭ minor,1A
+flute_Gs5_025_mezzo-piano_normal.mp3,,520 1,82,A minor,8A
+flute_Gs5_025_pianissimo_normal.mp3,,360 1,129,A minor,8A
+flute_Gs5_025_piano_normal.mp3,,147 2,91,A minor,8A
+flute_Gs5_long_mezzo-forte_tremolo.mp3,,921 1,89,A major,11B
+flute_Gs5_long_piano_normal.mp3,,864,91,A major,11B
+flute_Gs6_1_forte_normal.mp3,,1041 1,80,A minor,8A
+flute_Gs6_1_mezzo-forte_normal.mp3,,41 1,107,A minor,8A
+flute_Gs6_1_pianissimo_normal.mp3,,411 1,99,A minor,8A
+flute_Gs6_1_piano_normal.mp3,,222 1,153,A major,11B
+flute_Gs6_05_forte_normal.mp3,,1040 1,116,A minor,8A
+flute_Gs6_05_mezzo-forte_normal.mp3,,40 1,107,A minor,8A
+flute_Gs6_05_pianissimo_normal.mp3,,410 1,85,D major,10B
+flute_Gs6_05_piano_normal.mp3,,221 1,107,A minor,8A
+flute_Gs6_15_forte_normal.mp3,,704,127,D minor,7A
+flute_Gs6_15_mezzo-forte_normal.mp3,,42 1,144,A minor,8A
+flute_Gs6_15_pianissimo_normal.mp3,,412 1,117,A minor,8A
+flute_Gs6_15_piano_normal.mp3,,223 1,132,A minor,8A
+flute_Gs6_025_forte_normal.mp3,,1039 1,136,A major,11B
+flute_Gs6_025_mezzo-forte_normal.mp3,,39 1,136,A minor,8A
+flute_Gs6_025_pianissimo_normal.mp3,,409 1,153,F minor,4A
+flute_Gs6_025_piano_normal.mp3,,220 1,153,A major,11B
+flute_Gs6_long_piano_normal.mp3,,893 1,83,A minor,8A
+flute_Gs6_very-long_forte_normal.mp3,,901 1,99,A minor,8A
+flute_Gs6_very-long_pianissimo_normal.mp3,,898,78,A minor,8A

@@ -1,5 +1,9 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// BlockEditPopup.cpp
+// ─────────────────────────────────────────────────────────────────────────────
 
 #include "BlockEditPopup.h"
+#include "SoundLibrary.h"
 
 BlockEditPopup::BlockEditPopup()
 {
@@ -53,14 +57,10 @@ BlockEditPopup::BlockEditPopup()
     addAndMakeVisible(startField);
     addAndMakeVisible(durationField);
 
-    // ── Sound ComboBox (for instrument blocks) ────────────────────────────────
-    soundCombo.setColour(juce::ComboBox::backgroundColourId,     juce::Colour(0xff1e2030));
-    soundCombo.setColour(juce::ComboBox::textColourId,           juce::Colour(0xffeeeeff));
-    soundCombo.setColour(juce::ComboBox::outlineColourId,        juce::Colour(0xff3344aa));
-    soundCombo.setColour(juce::ComboBox::focusedOutlineColourId, juce::Colour(0xff6677ff));
-    addAndMakeVisible(soundCombo);
+    // ── Sound picker (library-backed) ─────────────────────────────────────────
+    addAndMakeVisible(soundPicker);
 
-    // ── File path field + Browse (for custom blocks) ──────────────────────────
+    // ── File path field + Browse (for Custom blocks) ──────────────────────────
     fileField.setFont(juce::Font(11.f));
     fileField.setColour(juce::TextEditor::backgroundColourId,     juce::Colour(0xff1e2030));
     fileField.setColour(juce::TextEditor::textColourId,           juce::Colour(0xffaabbcc));
@@ -79,9 +79,7 @@ BlockEditPopup::BlockEditPopup()
         fileChooser_ = std::make_unique<juce::FileChooser>(
             "Select WAV file", startDir, "*.wav");
 
-        auto* chooserPtr = fileChooser_.get();
-
-        chooserPtr->launchAsync(
+        fileChooser_->launchAsync(
             juce::FileBrowserComponent::openMode
           | juce::FileBrowserComponent::canSelectFiles,
             [this](const juce::FileChooser& fc)
@@ -124,74 +122,38 @@ BlockEditPopup::~BlockEditPopup()
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-void BlockEditPopup::populateSoundCombo(BlockType type, int currentSoundId)
+void BlockEditPopup::setSoundLibrary(SoundLibrary* lib)
 {
-    soundCombo.clear(juce::dontSendNotification);
-
-    struct SoundChoice { int id; const char* name; };
-
-    const SoundChoice* choices = nullptr;
-    int count = 0;
-
-    static const SoundChoice kViolin[] = {
-        { 100, "Violin A  (220 Hz)" },
-        { 101, "Violin D  (294 Hz)" },
-        { 102, "Violin G  (196 Hz)" },
-    };
-    static const SoundChoice kPiano[] = {
-        { 200, "Piano C4  (262 Hz)" },
-        { 201, "Piano A4  (440 Hz)" },
-        { 202, "Piano C5  (523 Hz)" },
-    };
-    static const SoundChoice kDrum[] = {
-        { 300, "Kick      (80 Hz)"  },
-        { 301, "Snare     (200 Hz)" },
-        { 302, "Hi-Hat    (800 Hz)" },
-    };
-
-    switch (type)
-    {
-        case BlockType::Violin: choices = kViolin; count = 3; break;
-        case BlockType::Piano:  choices = kPiano;  count = 3; break;
-        case BlockType::Drum:   choices = kDrum;   count = 3; break;
-        default: break;
-    }
-
-    for (int i = 0; i < count; ++i)
-        soundCombo.addItem(choices[i].name, choices[i].id);
-
-    if (currentSoundId > 0)
-        soundCombo.setSelectedId(currentSoundId, juce::dontSendNotification);
-    else if (count > 0)
-        soundCombo.setSelectedId(choices[0].id, juce::dontSendNotification);
+    library_ = lib;
+    soundPicker.setLibrary(lib);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 
 void BlockEditPopup::showAt(int blockSerial, BlockType type,
                              double startTime, double duration,
-                             int soundId, const juce::String& customFile,
+                             int /*soundId*/, const juce::String& customFile,
                              juce::Point<int> screenPos)
 {
     editingSerial = blockSerial;
     editingType   = type;
 
-    titleLabel.setText("Edit " + juce::String(blockTypeName(type))
+    titleLabel.setText("Edit " + juce::String(blockTypeDisplayName(type))
                        + " Block " + juce::String(blockSerial),
                        juce::dontSendNotification);
-
-    typeValueLabel.setText(blockTypeName(type), juce::dontSendNotification);
+    typeValueLabel.setText(blockTypeDisplayName(type), juce::dontSendNotification);
 
     startField   .setText(juce::String(startTime, 3), false);
     durationField.setText(juce::String(duration,  3), false);
 
-    // Show/hide instrument vs. custom selectors
-    bool isCustom = (type == BlockType::Custom);
+    // Show/hide library picker vs. custom file picker.
+    const bool isCustom   = (type == BlockType::Custom);
+    const bool isListener = (type == BlockType::Listener);
 
-    soundLabel.setVisible(!isCustom);
-    soundCombo.setVisible(!isCustom);
-    fileLabel .setVisible(isCustom);
-    fileField .setVisible(isCustom);
+    soundLabel  .setVisible(!isCustom && !isListener);
+    soundPicker .setVisible(!isCustom && !isListener);
+    fileLabel   .setVisible(isCustom);
+    fileField   .setVisible(isCustom);
     browseButton.setVisible(isCustom);
 
     if (isCustom)
@@ -199,9 +161,15 @@ void BlockEditPopup::showAt(int blockSerial, BlockType type,
         customFilePath_ = customFile;
         fileField.setText(customFile, false);
     }
-    else
+    else if (!isListener)
     {
-        populateSoundCombo(type, soundId);
+        soundPicker.setBlockType(type);
+        // If a library entry was previously assigned, customFile holds the
+        // relative path — try to highlight it.
+        int prevIdx = -1;
+        if (library_ && customFile.isNotEmpty())
+            prevIdx = library_->findByRelativePath(customFile);
+        soundPicker.setSelectedEntry(prevIdx);
     }
 
     // Position on screen
@@ -238,16 +206,22 @@ void BlockEditPopup::commit()
     const double newStart    = startField.getText().getDoubleValue();
     const double newDuration = std::max(0.01, durationField.getText().getDoubleValue());
 
-    int newSoundId = -1;
+    int          newSoundId  = -1;
     juce::String newCustomFile;
 
     if (editingType == BlockType::Custom)
     {
         newCustomFile = customFilePath_;
     }
-    else
+    else if (editingType != BlockType::Listener)
     {
-        newSoundId = soundCombo.getSelectedId();
+        int idx = soundPicker.getSelectedEntry();
+        if (idx >= 0 && library_ != nullptr)
+        {
+            // Pass the absolute path; ViewPortComponent::applyBlockEdit detects
+            // it lives under Sounds/ and routes it through the library cache.
+            newCustomFile = library_->at(idx).fullPath.getFullPathName();
+        }
     }
 
     if (onCommit)
@@ -291,13 +265,17 @@ void BlockEditPopup::resized()
     row(startLabel,    startField);
     row(durationLabel, durationField);
 
-    // Sound row (instrument) or File row (custom)
-    if (soundCombo.isVisible())
+    // Library picker (instrument blocks) or File browser (custom blocks)
+    if (soundPicker.isVisible())
     {
-        row(soundLabel, soundCombo);
+        // Picker spans the full width, growing to fill remaining space.
+        soundLabel.setBounds(kPad, y, kLabelW, kRowH - 4);
+        y += kRowH - 4;
+        const int pickerH = kHeight - y - 36 - kPad - 6;
+        soundPicker.setBounds(kPad, y, kWidth - kPad * 2, std::max(120, pickerH));
+        y += soundPicker.getHeight() + 8;
     }
-
-    if (fileField.isVisible())
+    else if (fileField.isVisible())
     {
         fileLabel.setBounds(kPad, y, kLabelW, kRowH - 4);
         const int browseW = 70;
@@ -306,7 +284,7 @@ void BlockEditPopup::resized()
         y += kRowH;
     }
 
-    y += 6;
+    y = kHeight - kPad - 26;
     const int btnW = (kWidth - kPad * 2 - 6) / 2;
     applyButton .setBounds(kPad,            y, btnW, 26);
     cancelButton.setBounds(kPad + btnW + 6, y, btnW, 26);

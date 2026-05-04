@@ -27,27 +27,25 @@ static bool isInBounds(const Vec3i& pos)
 
 static Vec3f getBlockColor(BlockType type, int soundId)
 {
-    switch (type)
+    // Custom blocks vary by soundId so different user WAVs look distinct.
+    if (type == BlockType::Custom)
     {
-        case BlockType::Violin: return { 0.85f, 0.22f, 0.18f };
-        case BlockType::Piano:  return { 0.25f, 0.45f, 0.90f };
-        case BlockType::Drum:   return { 0.22f, 0.78f, 0.32f };
-        case BlockType::Custom:
-        {
-            static const Vec3f kPalette[] = {
-                { 0.92f, 0.92f, 0.92f },   // white
-                { 0.95f, 0.85f, 0.20f },   // yellow
-                { 0.20f, 0.85f, 0.85f },   // cyan
-                { 0.85f, 0.38f, 0.85f },   // magenta
-                { 0.95f, 0.55f, 0.18f },   // orange
-                { 0.65f, 0.48f, 0.90f },   // purple
-            };
-            constexpr int kPaletteSize = sizeof(kPalette) / sizeof(kPalette[0]);
-            int idx = ((soundId % kPaletteSize) + kPaletteSize) % kPaletteSize;
-            return kPalette[idx];
-        }
+        static const Vec3f kPalette[] = {
+            { 0.92f, 0.92f, 0.92f },   // white
+            { 0.95f, 0.85f, 0.20f },   // yellow
+            { 0.20f, 0.85f, 0.85f },   // cyan
+            { 0.85f, 0.38f, 0.85f },   // magenta
+            { 0.95f, 0.55f, 0.18f },   // orange
+            { 0.65f, 0.48f, 0.90f },   // purple
+        };
+        constexpr int kPaletteSize = sizeof(kPalette) / sizeof(kPalette[0]);
+        int idx = ((soundId % kPaletteSize) + kPaletteSize) % kPaletteSize;
+        return kPalette[idx];
     }
-    return { 0.5f, 0.5f, 0.5f };
+
+    // All other types: use the BlockType.h color helper.
+    auto c = blockTypeColor(type);
+    return { c.getFloatRed(), c.getFloatGreen(), c.getFloatBlue() };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -82,6 +80,26 @@ ViewPortComponent::ViewPortComponent()
     audioEngine.generateDrumHit(302, 2, 0.2);    // Hi-Hat
 
     audioEngine.start();
+
+    // ── Sound library — CSV-only indexing (no WAV decoding here) ──────────
+    auto cwd      = juce::File::getCurrentWorkingDirectory();
+    auto csvFile  = cwd.getChildFile("CSV").getChildFile("sound_library.csv");
+    auto soundsDir = cwd.getChildFile("Sounds");
+    if (csvFile.existsAsFile() && soundsDir.isDirectory())
+    {
+        libraryLoaded_ = library_.load(csvFile, soundsDir);
+        DBG("SoundLibrary: " << (libraryLoaded_ ? "loaded " : "FAILED to load ")
+            << library_.count() << " entries from " << csvFile.getFullPathName());
+    }
+    else
+    {
+        DBG("SoundLibrary: CSV or Sounds folder not found at " << cwd.getFullPathName());
+    }
+}
+
+int ViewPortComponent::registerLibrarySound(int entryIdx)
+{
+    return library_.ensureLoaded(entryIdx, audioEngine);
 }
 
 ViewPortComponent::~ViewPortComponent()
@@ -92,12 +110,31 @@ ViewPortComponent::~ViewPortComponent()
 
 void ViewPortComponent::loadScene(std::vector<BlockEntry> newBlocks)
 {
-    // Re-register custom WAV samples so the audio engine knows them
+    // Re-register WAV samples so the audio engine knows them.
+    // Two flavors:
+    //   * relative path (no drive letter)  -> library sound, looked up via SoundLibrary
+    //   * absolute path                    -> user Custom WAV, loaded directly
+    auto soundsRoot = juce::File::getCurrentWorkingDirectory().getChildFile("Sounds");
     for (auto& b : newBlocks)
     {
-        if (b.blockType == BlockType::Custom && !b.customFilePath.empty())
+        if (b.customFilePath.empty()) continue;
+        juce::String pathStr(b.customFilePath);
+
+        // Heuristic: an absolute Windows/Unix path starts with letter+":" or '/'.
+        bool isAbsolute = juce::File::isAbsolutePath(pathStr);
+
+        if (!isAbsolute)
         {
-            juce::File wav(b.customFilePath);
+            int idx = library_.findByRelativePath(pathStr);
+            if (idx >= 0)
+            {
+                int sid = library_.ensureLoaded(idx, audioEngine);
+                if (sid >= 0) b.soundId = sid;
+            }
+        }
+        else
+        {
+            juce::File wav(pathStr);
             if (wav.existsAsFile() && !audioEngine.hasSample(b.soundId))
                 audioEngine.loadSample(b.soundId, wav);
         }
