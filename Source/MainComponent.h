@@ -38,13 +38,24 @@ private:
     bool isSidebarCollapsed = false;
 
     // ── Block type toolbar ────────────────────────────────────────────────────
-    juce::TextButton violinBtn { "Violin" };
-    juce::TextButton pianoBtn  { "Piano"  };
-    juce::TextButton drumBtn   { "Drum"   };
-    juce::TextButton customBtn { "Custom" };
+    // Single grouped ComboBox listing all 23 BlockTypes, plus a color "pill"
+    // that visually echoes the active selection.
+    juce::ComboBox blockTypeCombo;
+
+    /// Compact color-swatch + active type name shown left of the combo.
+    class TypePill : public juce::Component
+    {
+    public:
+        void setActive(BlockType t) { type_ = t; repaint(); }
+        void paint(juce::Graphics& g) override;
+    private:
+        BlockType type_ = BlockType::Violin;
+    } typePill_;
+
     BlockType activeType_ = BlockType::Violin;
     void setActiveBlockType(BlockType t);
-    void refreshToolbarColors();
+    void rebuildBlockTypeCombo();
+    void syncComboToActive();
 
     // ── File toolbar ─────────────────────────────────────────────────────────
     juce::TextButton newBtn   { "New"  };

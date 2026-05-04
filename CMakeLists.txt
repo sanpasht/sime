@@ -31,7 +31,9 @@ target_sources(SIME PRIVATE
     Source/TransportBarComponent.cpp
     Source/SceneFile.cpp
     Source/StartupMenuComponent.cpp
-    Source/TimelineComponent.cpp 
+    Source/TimelineComponent.cpp
+    Source/SoundLibrary.cpp
+    Source/SoundPickerComponent.cpp
 )
 
 target_compile_definitions(SIME PRIVATE

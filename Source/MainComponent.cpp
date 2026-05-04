@@ -40,17 +40,15 @@ MainComponent::MainComponent()
     };
 
     // Hide main app components until the user dismisses the startup screen
-    view        .setVisible(false);
-    sidebar     .setVisible(false);
-    transportBar.setVisible(false);
-    violinBtn   .setVisible(false);
-    pianoBtn    .setVisible(false);
-    drumBtn     .setVisible(false);
-    customBtn   .setVisible(false);
-    newBtn      .setVisible(false);
-    openBtn     .setVisible(false);
-    saveBtn     .setVisible(false);
-    saveAsBtn   .setVisible(false);
+    view           .setVisible(false);
+    sidebar        .setVisible(false);
+    transportBar   .setVisible(false);
+    blockTypeCombo .setVisible(false);
+    typePill_      .setVisible(false);
+    newBtn         .setVisible(false);
+    openBtn        .setVisible(false);
+    saveBtn        .setVisible(false);
+    saveAsBtn      .setVisible(false);
     addAndMakeVisible(view);
     addAndMakeVisible(sidebar);
     addAndMakeVisible(transportBar);
@@ -87,17 +85,23 @@ MainComponent::MainComponent()
     };
 
     // ── Block type toolbar ────────────────────────────────────────────────────
-    addAndMakeVisible(violinBtn);
-    addAndMakeVisible(pianoBtn);
-    addAndMakeVisible(drumBtn);
-    addAndMakeVisible(customBtn);
+    addAndMakeVisible(typePill_);
+    addAndMakeVisible(blockTypeCombo);
 
-    violinBtn.onClick = [this] { setActiveBlockType(BlockType::Violin); };
-    pianoBtn .onClick = [this] { setActiveBlockType(BlockType::Piano);  };
-    drumBtn  .onClick = [this] { setActiveBlockType(BlockType::Drum);   };
-    customBtn.onClick = [this] { setActiveBlockType(BlockType::Custom); };
+    blockTypeCombo.setColour(juce::ComboBox::backgroundColourId,    juce::Colour(0xff181a24));
+    blockTypeCombo.setColour(juce::ComboBox::textColourId,           juce::Colour(0xffe2e6f2));
+    blockTypeCombo.setColour(juce::ComboBox::outlineColourId,        juce::Colour(0xff2f3447));
+    blockTypeCombo.setColour(juce::ComboBox::arrowColourId,          juce::Colour(0xff8b94ad));
+    blockTypeCombo.setColour(juce::ComboBox::focusedOutlineColourId, juce::Colour(0xff5b7ce6));
 
-    refreshToolbarColors();
+    rebuildBlockTypeCombo();
+    blockTypeCombo.onChange = [this]
+    {
+        int id = blockTypeCombo.getSelectedId();
+        if (id > 0)
+            setActiveBlockType(static_cast<BlockType>(id - 1));
+    };
+    syncComboToActive();
 
     // ── File toolbar ────────────────────────────────────────────────────────
     for (auto* btn : { &newBtn, &openBtn, &saveBtn, &saveAsBtn })
@@ -131,6 +135,9 @@ MainComponent::MainComponent()
     {
         view.clearSelectedBlock();
     };
+
+    // Wire the popup's sound picker to the library that lives in ViewPortComponent.
+    editPopup.setSoundLibrary(&view.soundLibrary());
 
     view.onRequestMovementConfirm = 
         [this](int serial, double duration, 
@@ -181,17 +188,15 @@ void MainComponent::dismissStartupMenu()
     showingStartup_ = false;
     startupMenu_.setVisible(false);
 
-    view        .setVisible(true);
-    sidebar     .setVisible(true);
-    transportBar.setVisible(true);
-    violinBtn   .setVisible(true);
-    pianoBtn    .setVisible(true);
-    drumBtn     .setVisible(true);
-    customBtn   .setVisible(true);
-    newBtn      .setVisible(true);
-    openBtn     .setVisible(true);
-    saveBtn     .setVisible(true);
-    saveAsBtn   .setVisible(true);
+    view           .setVisible(true);
+    sidebar        .setVisible(true);
+    transportBar   .setVisible(true);
+    blockTypeCombo .setVisible(true);
+    typePill_      .setVisible(true);
+    newBtn         .setVisible(true);
+    openBtn        .setVisible(true);
+    saveBtn        .setVisible(true);
+    saveAsBtn      .setVisible(true);
 
     resized();
 }
@@ -202,35 +207,69 @@ void MainComponent::setActiveBlockType(BlockType t)
 {
     activeType_ = t;
     view.setActiveBlockType(t);
-    refreshToolbarColors();
+    typePill_.setActive(t);
+    syncComboToActive();
 }
 
-void MainComponent::refreshToolbarColors()
+void MainComponent::rebuildBlockTypeCombo()
 {
-    auto style = [&](juce::TextButton& btn, BlockType t,
-                     juce::Colour activeCol)
-    {
-        if (activeType_ == t)
-        {
-            btn.setColour(juce::TextButton::buttonColourId,  activeCol);
-            btn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
-        }
-        else
-        {
-            btn.setColour(juce::TextButton::buttonColourId,  juce::Colour(0xff222233));
-            btn.setColour(juce::TextButton::textColourOffId, juce::Colour(0xff888899));
-        }
+    blockTypeCombo.clear(juce::dontSendNotification);
+
+    // Iterate categories in display order; for each, emit a section heading
+    // followed by every type that lives in that category.  This avoids the
+    // duplicated-header bug (Violin appearing alone in its own "Strings"
+    // group) caused by traversing the enum in declaration order.
+    const BlockCategory order[] = {
+        BlockCategory::Synth,
+        BlockCategory::Strings,
+        BlockCategory::Woodwinds,
+        BlockCategory::Brass,
+        BlockCategory::Percussion,
+        BlockCategory::Special,
     };
 
-    style(violinBtn, BlockType::Violin, juce::Colour(0xffc03528));
-    style(pianoBtn,  BlockType::Piano,  juce::Colour(0xff3366cc));
-    style(drumBtn,   BlockType::Drum,   juce::Colour(0xff2eaa44));
-    style(customBtn, BlockType::Custom, juce::Colour(0xff666688));
+    bool firstSection = true;
+    for (auto cat : order)
+    {
+        auto types = blockTypesByCategory(cat);
+        if (types.empty()) continue;
 
-    violinBtn.repaint();
-    pianoBtn .repaint();
-    drumBtn  .repaint();
-    customBtn.repaint();
+        if (!firstSection)
+            blockTypeCombo.addSeparator();
+        firstSection = false;
+
+        blockTypeCombo.addSectionHeading(blockCategoryName(cat));
+        for (auto bt : types)
+            blockTypeCombo.addItem(blockTypeDisplayName(bt), (int)bt + 1);
+    }
+}
+
+void MainComponent::syncComboToActive()
+{
+    blockTypeCombo.setSelectedId((int)activeType_ + 1, juce::dontSendNotification);
+    typePill_.setActive(activeType_);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TypePill — color swatch + active type name shown left of the combo box
+// ─────────────────────────────────────────────────────────────────────────────
+
+void MainComponent::TypePill::paint(juce::Graphics& g)
+{
+    auto bounds = getLocalBounds().toFloat();
+
+    g.setColour(juce::Colour(0xff14171f));
+    g.fillRoundedRectangle(bounds, 4.f);
+
+    auto swatch = bounds.withWidth(16.f).reduced(4.f);
+    g.setColour(blockTypeColor(type_));
+    g.fillRoundedRectangle(swatch, 2.f);
+
+    g.setColour(juce::Colour(0xffe2e6f2));
+    g.setFont(juce::Font(13.f, juce::Font::bold));
+    g.drawText(blockTypeDisplayName(type_),
+               bounds.withTrimmedLeft(20.f).withTrimmedRight(6.f),
+               juce::Justification::centredLeft, true);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -287,14 +326,13 @@ void MainComponent::resized()
 
     // Block type toolbar — top of viewport area
     auto toolbarArea = area.removeFromTop(kToolbarH);
-    const int btnW = 80;
-    const int gap  = 4;
-    int tx = toolbarArea.getX() + 8;
+    const int gap = 4;
     int ty = toolbarArea.getY() + (kToolbarH - 26) / 2;
-    violinBtn.setBounds(tx, ty, btnW, 26);  tx += btnW + gap;
-    pianoBtn .setBounds(tx, ty, btnW, 26);  tx += btnW + gap;
-    drumBtn  .setBounds(tx, ty, btnW, 26);  tx += btnW + gap;
-    customBtn.setBounds(tx, ty, btnW, 26);
+
+    // Active type pill (color swatch + name) and full grouped ComboBox
+    int tx = toolbarArea.getX() + 8;
+    typePill_     .setBounds(tx, ty, 160, 26);  tx += 160 + gap;
+    blockTypeCombo.setBounds(tx, ty, 200, 26);
 
     // File toolbar — right side of toolbar row
     const int fbtnW = 64;
