@@ -218,8 +218,7 @@ drops the event (safe fallback).
 
 ## 7. Quick test recipe
 
-1. Build & launch SIME from the project root (so `CSV/` and `Sounds/`
-   are next to the working directory).
+1. Build & launch SIME (from VS, double-clicking the `.exe`, or a terminal — the app resolves the repo folder automatically if `Sounds/` + `CSV/` live above `build/`).
 2. Open the **Block Type** combo at the top → pick *Strings → Banjo*.
 3. Place a banjo block in the scene.
 4. Hit `E` → right-click the new block.
@@ -239,3 +238,30 @@ drops the event (safe fallback).
 * **0** WAV files decoded until a block is assigned a sound
 * Search across ~1,500 violin entries: **<1 ms** per keystroke
 * CSV parse + indexing cost on cold launch: **well under 250 ms**
+
+---
+
+## 9. Content root path (why teammates saw an empty picker)
+
+Older builds used **`getCurrentWorkingDirectory()`** only. That breaks when:
+
+* Someone double-clicks **`SIME.exe`** (CWD is often `...\Debug\`, not the repo root).
+* Visual Studio starts the debugger with CWD set to **`$(OutDir)`** (same problem).
+
+The picker stays empty because **`CSV/sound_library.csv`** was never found, so `SoundLibrary::load` never ran — even if `Sounds/` existed elsewhere on disk.
+
+**Fix (current code):** `resolveContentRoot()` in `ViewPortComponent.cpp` walks **up** from:
+
+1. Current working directory, and  
+2. The directory containing the executable,
+
+until it finds a folder that contains **both** `Sounds/` (directory) and **`CSV/sound_library.csv`** (file). That folder becomes `contentRoot_`. Library loading and `applyBlockEdit()` library detection both use `contentRoot_/Sounds`.
+
+### Troubleshooting (sound picker empty)
+
+| Check | Action |
+| ----- | ------ |
+| Missing CSV | **Both** `Sounds/` **and** `CSV/sound_library.csv` must live beside each other (usually repo root). WAVs alone are not enough — the index comes from the CSV. |
+| Wrong layout | Don’t put only `Sounds/` under `build/` unless you also copy `CSV/` there; normal layout keeps both under `sime/`. |
+| Still broken | Run a **Debug** build and watch the IDE **Output** window — look for `SoundLibrary: content root = ...` and whether loading succeeded. |
+| Stale exe | After pulling, **rebuild** (`cmake --build ...`). |
