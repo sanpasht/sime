@@ -13,6 +13,51 @@ using namespace juce::gl;
 // ─────────────────────────────────────────────────────────────────────────────
 static constexpr int kGridHalf = 40;
 
+namespace
+{
+    bool hasSoundsAndCsv(const juce::File& dir)
+    {
+        return dir.getChildFile("Sounds").isDirectory()
+            && dir.getChildFile("CSV").getChildFile("sound_library.csv").existsAsFile();
+    }
+
+    /// Walk upward from `start` looking for a folder that contains both `Sounds/`
+    /// and `CSV/sound_library.csv`. Returns an invalid File if none found.
+    juce::File climbToContentRoot(juce::File start)
+    {
+        for (int depth = 0; depth < 14; ++depth)
+        {
+            if (hasSoundsAndCsv(start))
+                return start;
+            auto parent = start.getParentDirectory();
+            if (!parent.isDirectory() || parent == start)
+                break;
+            start = parent;
+        }
+        return {};
+    }
+
+    /// Prefer repo root whether the user launched from a terminal (`cd sime`) or
+    /// double-clicked `SIME.exe` under `build/.../Debug/` (wrong CWD).
+    juce::File resolveContentRoot()
+    {
+        const juce::File seeds[] = {
+            juce::File::getCurrentWorkingDirectory(),
+            juce::File::getSpecialLocation(juce::File::currentExecutableFile)
+                .getParentDirectory(),
+        };
+
+        for (auto seed : seeds)
+        {
+            auto found = climbToContentRoot(seed);
+            if (found.getFullPathName().isNotEmpty())
+                return found;
+        }
+
+        return juce::File::getCurrentWorkingDirectory();
+    }
+}
+
 static bool isInBounds(const Vec3i& pos)
 {
     return pos.x >= -kGridHalf && pos.x < kGridHalf
@@ -82,9 +127,12 @@ ViewPortComponent::ViewPortComponent()
     audioEngine.start();
 
     // ── Sound library (CSV-only indexing; no WAV decoding here) ────────────
-    auto cwd        = juce::File::getCurrentWorkingDirectory();
-    auto csvFile    = cwd.getChildFile("CSV").getChildFile("sound_library.csv");
-    auto soundsDir  = cwd.getChildFile("Sounds");
+    contentRoot_ = resolveContentRoot();
+    auto csvFile   = contentRoot_.getChildFile("CSV").getChildFile("sound_library.csv");
+    auto soundsDir = contentRoot_.getChildFile("Sounds");
+
+    DBG("SoundLibrary: content root = " << contentRoot_.getFullPathName());
+
     if (csvFile.existsAsFile() && soundsDir.isDirectory())
     {
         libraryLoaded_ = library_.load(csvFile, soundsDir);
@@ -93,8 +141,9 @@ ViewPortComponent::ViewPortComponent()
     }
     else
     {
-        DBG("SoundLibrary: CSV/sound_library.csv or Sounds/ folder not found at "
-            << cwd.getFullPathName() << "  (sound picker will be empty)");
+        DBG("SoundLibrary: CSV or Sounds not found under content root "
+            << contentRoot_.getFullPathName()
+            << "  (expected CSV/sound_library.csv + Sounds/ — picker will be empty)");
     }
 }
 

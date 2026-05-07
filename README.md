@@ -152,7 +152,16 @@ To the **left** of the New / Open / Save / Save As buttons:
 
 In **edit mode** (`E`), **RMB** a block to open the edit window. For non-Custom blocks it includes a **search field** and **scrollable list** of samples from `CSV/sound_library.csv` / `Sounds/` (filtered by that block’s type). Type to search (e.g. note, dynamic, articulation). **Double-click** a row to apply immediately, or select and press **Apply**. **Custom** blocks still use **Browse…** for any WAV on disk.
 
-Run the app with the **working directory** at the repo root (e.g. `cd C:\sime` then launch) so `Sounds\` and `CSV\sound_library.csv` are found. Full design notes: [`md files/AUDIO_LIBRARY_REPORT.md`](md%20files/AUDIO_LIBRARY_REPORT.md).
+Run the app from anywhere (double-clicking `SIME.exe`, Visual Studio **Local Windows Debugger**, or `cd C:\sime` in a terminal). The app finds the **content root** by walking **up** from (1) the current working directory and (2) the folder containing `SIME.exe`, until it sees **both** `Sounds/` and `CSV/sound_library.csv`. Typical layout:
+
+```
+sime/                    ← content root (detected automatically)
+  Sounds/
+  CSV/sound_library.csv
+  build/SIME_artefacts/Debug/SIME.exe
+```
+
+If the picker still says the library is not loaded, see **Troubleshooting (sound picker empty)** in [`md files/AUDIO_LIBRARY_REPORT.md`](md%20files/AUDIO_LIBRARY_REPORT.md). Full design notes are there too.
 
 ---
 
@@ -396,7 +405,7 @@ loaded".
 ### Sound Library
 **`SoundLibrary.cpp/h`**
 - Master index path → `CSV/sound_library.csv` (loaded in `ViewPortComponent::newOpenGLContextCreated`)
-- Sounds folder root → `Sounds/` (relative to the executable's working directory)
+- Sounds folder root → `Sounds/` under the auto-resolved **content root** (walks up from CWD and from the `.exe` folder — see `resolveContentRoot()` in `ViewPortComponent.cpp`)
 - Search field set → `SoundLibrary::search()` — substring match across note/duration/dynamic/articulation/key/path/displayName
 - Lazy load policy → `SoundLibrary::ensureLoaded()` — called by `ViewPortComponent::applyBlockEdit()` on commit only
 - Block-type colors → `blockTypeColor()` in `BlockType.h`

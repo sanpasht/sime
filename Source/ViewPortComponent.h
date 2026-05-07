@@ -82,8 +82,9 @@ public:
         if (customFile.isNotEmpty())
         {
             juce::File wav(customFile);
-            juce::File libRoot = juce::File::getCurrentWorkingDirectory()
-                                     .getChildFile("Sounds");
+            // Must match the folder used when SoundLibrary was loaded (see
+            // contentRoot_ set in the cpp ctor — not raw current-working-directory).
+            juce::File libRoot = contentRoot_.getChildFile("Sounds");
 
             if (wav.existsAsFile() && wav.isAChildOf(libRoot))
             {
@@ -374,6 +375,10 @@ private:
     // =========================================================================
     SoundLibrary    library_;
     bool            libraryLoaded_ = false;
+
+    /// Directory that contains both `Sounds/` and `CSV/sound_library.csv`.
+    /// Resolved once in the ctor by walking up from CWD and from the .exe folder.
+    juce::File      contentRoot_;
 
     // =========================================================================
     // View gizmo / direction snap
