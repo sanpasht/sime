@@ -84,6 +84,8 @@ MainComponent::MainComponent()
         view.updateBlockTiming(serial, start, duration);
     };
 
+    transportBar.onTimelineBlockClicked = [this](int serial) { view.highlightBlock(serial); };
+
     // ── Block type toolbar ────────────────────────────────────────────────────
     addAndMakeVisible(typePill_);
     addAndMakeVisible(blockTypeCombo);

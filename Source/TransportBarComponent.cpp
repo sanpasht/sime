@@ -48,6 +48,12 @@ TransportBarComponent::TransportBarComponent()
             onBlockEdited(serial, start, duration);
     };
 
+    timeline.onRectRegionClicked = [this](int serial)
+    {
+        if (onTimelineBlockClicked)
+            onTimelineBlockClicked(serial);
+    };
+
     collapseButton.onClick = [this]
     {
         isCollapsed_ = !isCollapsed_;

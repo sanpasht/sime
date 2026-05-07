@@ -161,6 +161,7 @@ public:
         selectedSerial = -1;
     }
 
+    void highlightBlock(int serial);
 
     // ── Transport state queries (called by MainComponent to update transport bar) ─────
 
@@ -351,6 +352,7 @@ private:
     // =========================================================================
     std::vector<BlockEntry> blockList;
     int                     nextSerial = 1;
+    int highlightedBlockSerial_ = -1;
 
     // =========================================================================
     // Sidebar / toggle

@@ -628,10 +628,13 @@ void ViewPortComponent::renderOpenGL()
         {
             renderer.renderHighlight(vp, placePos, Vec3f{ 0.2f, 1.f, 0.3f });
         }
-        // Highlight playing blocks
-        for (const auto& b : blockList)
+        for (const auto& b : blockList){
             if (b.isPlaying)
                 renderer.renderHighlight(vp, b.pos, Vec3f{ 0.f, 1.f, 0.3f });
+            else if(b.serial == highlightedBlockSerial_)
+                renderer.renderHighlight(vp, b.pos, Vec3f{ 1.f, 0.85f, 0.1f });
+        }
+            
     }
     
     
@@ -1574,3 +1577,10 @@ void ViewPortComponent::updateBlockTiming(int serial, double start, double durat
 }
 
 void ViewPortComponent::focusGained(FocusChangeType) {}
+
+
+void ViewPortComponent::highlightBlock(int serial)
+{
+    highlightedBlockSerial_ = serial;
+    repaint();
+}

@@ -360,6 +360,9 @@ void TimelineComponent::mouseDown(const juce::MouseEvent& e)
 
         if (rect.contains(e.getPosition()))
         {
+            if (onRectRegionClicked)
+                onRectRegionClicked(r.serial);
+
             selectedBlock_ = r.serial;
             dragStartTime_ = xToTime(e.x);
             originalStart_ = r.startTime;
@@ -375,6 +378,10 @@ void TimelineComponent::mouseDown(const juce::MouseEvent& e)
                 dragMode_ = DragMode::Move;
 
             return;
+        }else{
+            if (onRectRegionClicked)
+                onRectRegionClicked(-1);
+
         }
     }
 
@@ -427,3 +434,5 @@ void TimelineComponent::setPlaying(bool playing)
         isPanningTimeline_ = false;
     }
 }
+
+

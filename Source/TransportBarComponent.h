@@ -42,6 +42,8 @@ public:
         return isCollapsed_ ? kCollapsedHeight : kExpandedHeight;
     }
 
+    std::function<void(int serial)> onTimelineBlockClicked;
+
     
 
 private:
