@@ -59,9 +59,11 @@ public:
     // ── Edit mode API (called by MainComponent) ───────────────────────────────
 
     /// Fired when user clicks a block in edit mode.
-    /// Args: serial, blockType, start, dur, soundId, customFilePath, viewLocalPos
+    /// Args: serial, blockType, start, dur, soundId, customFilePath,
+    ///       isLooping, loopDurationSec, viewLocalPos
     std::function<void(int, BlockType, double, double, int,
-                       const juce::String&, juce::Point<int>)> onRequestBlockEdit;
+                       const juce::String&, bool, double,
+                       juce::Point<int>)> onRequestBlockEdit;
     
     void updateBlockTiming(int serial, double startTime, double duration);
 
@@ -74,7 +76,8 @@ public:
     ///                                         (lazy WAV load + cached)
     ///   * any other absolute path           -> loaded as a one-off Custom WAV
     void applyBlockEdit(int serial, double startTime, double duration,
-                        int soundId, const juce::String& customFile)
+                        int soundId, const juce::String& customFile,
+                        bool isLooping, double loopDurationSec)
     {
         int resolvedSoundId = soundId;
         std::string resolvedPath;
@@ -118,7 +121,8 @@ public:
         {
             juce::ScopedLock lock(editMutex_);
             pendingBlockEdit_ = { serial, startTime, duration,
-                                   resolvedSoundId, resolvedPath, true };
+                                   resolvedSoundId, resolvedPath,
+                                   isLooping, loopDurationSec, true };
         }
     }
 
@@ -242,12 +246,14 @@ private:
     // =========================================================================
     struct PendingBlockEdit
     {
-        int         serial    = -1;
-        double      startTime = 0.0;
-        double      duration  = 1.0;
-        int         soundId   = -1;
+        int         serial          = -1;
+        double      startTime       = 0.0;
+        double      duration        = 1.0;
+        int         soundId         = -1;
         std::string customFile;
-        bool        active    = false;
+        bool        isLooping       = false;
+        double      loopDurationSec = 4.0;
+        bool        active          = false;
     };
     PendingBlockEdit      pendingBlockEdit_;
     juce::CriticalSection editMutex_;

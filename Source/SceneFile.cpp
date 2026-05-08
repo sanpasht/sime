@@ -9,7 +9,7 @@
 namespace
 {
     static constexpr char     kMagic[4] = { 'S', 'I', 'M', 'E' };
-    static constexpr uint16_t kVersion  = 1;
+    static constexpr uint16_t kVersion  = 2;   // bumped from 1: adds loop fields
 
     // Tiny endian-agnostic helpers (no-op on x86 but keeps intent clear)
     template <typename T>
@@ -63,6 +63,10 @@ bool SceneFile::save(const std::string& path, const std::vector<BlockEntry>& blo
                 writeVal<int32_t>(f, kf.position.z);
             }
         }
+
+        // --- v2 additions ---
+        writeVal<uint8_t>(f, b.isLooping ? 1 : 0);
+        writeVal<double>(f, b.loopDurationSec);
     }
 
     return f.good();
@@ -141,6 +145,22 @@ bool SceneFile::load(const std::string& path, std::vector<BlockEntry>& outBlocks
                 if (!readVal(f, kf.position.y)) return false;
                 if (!readVal(f, kf.position.z)) return false;
             }
+        }
+
+        // --- v2 additions (only present in v >= 2 files) ---
+        if (version >= 2)
+        {
+            uint8_t lp = 0;
+            if (!readVal(f, lp)) return false;
+            b.isLooping = (lp != 0);
+
+            if (!readVal(f, b.loopDurationSec)) return false;
+        }
+        else
+        {
+            // v1 default
+            b.isLooping       = false;
+            b.loopDurationSec = 4.0;
         }
 
         b.resetPlaybackState();
