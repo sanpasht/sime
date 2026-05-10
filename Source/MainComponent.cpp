@@ -84,7 +84,23 @@ MainComponent::MainComponent()
         view.updateBlockTiming(serial, start, duration);
     };
 
-    transportBar.onTimelineBlockClicked = [this](int serial) { view.highlightBlock(serial); };
+    transportBar.onTimelineBlockClicked = [this](int serial) { 
+        view.highlightBlock(serial);
+        auto block = view.getBlockBySerial(serial);
+        if (block)
+            sidebar.showBlockInfo(*block);
+
+    };
+    sidebar.onApplyBlockInfo = [this](int serial, Vec3i pos, double start, double duration, bool movementEnabled)
+    {
+        view.applySidebarBlockInfo(serial, pos, start, duration, movementEnabled);
+
+        auto updated = view.getBlockBySerial(serial);
+        if (updated)
+            sidebar.showBlockInfo(*updated);
+
+        transportBar.setBlocks(view.getBlockListCopy());
+    };
 
     // ── Block type toolbar ────────────────────────────────────────────────────
     addAndMakeVisible(typePill_);

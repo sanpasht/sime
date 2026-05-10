@@ -58,6 +58,9 @@ public:
 
     // ── Edit mode API (called by MainComponent) ───────────────────────────────
 
+    std::optional<BlockEntry> getBlockBySerial(int serial) const;
+    void applySidebarBlockInfo(int serial, Vec3i pos, double start, double duration, bool movementEnabled);
+
     /// Fired when user clicks a block in edit mode.
     /// Args: serial, blockType, start, dur, soundId, customFilePath, viewLocalPos
     std::function<void(int, BlockType, double, double, int,

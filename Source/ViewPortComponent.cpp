@@ -268,7 +268,7 @@ void ViewPortComponent::renderOpenGL()
         nextSerial = maxSerial + 1;
         renderer.meshDirty = true;
 
-        std::vector<SidebarComponent::BlockEntry> uiBlocks;
+        std::vector<SidebarComponent::Block> uiBlocks;
         uiBlocks.reserve(blockList.size());
         for (const auto& e : blockList)
             uiBlocks.push_back({ e.serial, e.pos });
@@ -308,7 +308,7 @@ void ViewPortComponent::renderOpenGL()
         }
         pendingOps.clear();
         if (changed) {
-            std::vector<SidebarComponent::BlockEntry> uiBlocks;
+            std::vector<SidebarComponent::Block> uiBlocks;
             uiBlocks.reserve(blockList.size());
 
             for (const auto& e : blockList)
@@ -456,7 +456,7 @@ void ViewPortComponent::renderOpenGL()
             blockList.push_back(newBlock);
             lastPlacedPos = placePos;
             renderer.meshDirty = true;
-            std::vector<SidebarComponent::BlockEntry> uiBlocks;
+            std::vector<SidebarComponent::Block> uiBlocks;
             uiBlocks.reserve(blockList.size());
 
             for (const auto& e : blockList)
@@ -487,7 +487,7 @@ void ViewPortComponent::renderOpenGL()
                 [&](const BlockEntry& e){ return e.pos == hit.voxelPos; });
             if (it != blockList.end()) blockList.erase(it);
             renderer.meshDirty = true;
-            std::vector<SidebarComponent::BlockEntry> uiBlocks;
+            std::vector<SidebarComponent::Block> uiBlocks;
             uiBlocks.reserve(blockList.size());
 
             for (const auto& e : blockList)
@@ -1632,4 +1632,40 @@ void ViewPortComponent::highlightBlock(int serial)
 {
     highlightedBlockSerial_ = serial;
     repaint();
+}
+
+std::optional<BlockEntry> ViewPortComponent::getBlockBySerial(int serial) const
+{
+    for (const auto& b : blockList)
+        if (b.serial == serial)
+            return b;
+
+    return std::nullopt;
+}
+
+
+void ViewPortComponent::applySidebarBlockInfo(
+    int serial,
+    Vec3i pos,
+    double start,
+    double duration,
+    bool movementEnabled)
+{
+    for (auto& b : blockList)
+    {
+        if (b.serial == serial)
+        {
+            b.pos = pos;
+            b.startTimeSec = start;
+            b.durationSec = duration;
+
+            if (!movementEnabled)
+                b.hasRecordedMovement = false;
+            else if (!b.recordedMovement.empty())
+                b.hasRecordedMovement = true;
+
+            b.resetPlaybackState();
+            break;
+        }
+    }
 }
