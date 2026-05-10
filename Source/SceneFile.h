@@ -6,7 +6,7 @@
 //
 //   [Header]
 //     4 bytes  magic          "SIME"
-//     2 bytes  version        uint16  (currently 1)
+//     2 bytes  version        uint16  (currently 2)
 //     4 bytes  blockCount     uint32
 //     2 bytes  reserved       (zero)
 //
@@ -25,8 +25,13 @@
 //       [Keyframe] × keyframeCount
 //         8 bytes  timeSec    double
 //         12 bytes position   int32 × 3
+//     ── v2 additions ──
+//     1 byte   isLooping       uint8  (bool)
+//     8 bytes  loopDurationSec double
 //
 // All multi-byte integers are little-endian (native on x86/x64).
+// v1 files still load: missing fields default to isLooping=false,
+// loopDurationSec=4.0.
 // ---------------------------------------------------------------------------
 
 #include "MathUtils.h"

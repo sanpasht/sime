@@ -356,6 +356,8 @@ void ViewPortComponent::renderOpenGL()
                     {
                         b.soundId = edit.soundId;
                     }
+                    b.isLooping       = edit.isLooping;
+                    b.loopDurationSec = edit.loopDurationSec;
                     b.resetPlaybackState();
                     break;
                 }
@@ -1141,6 +1143,8 @@ void ViewPortComponent::mouseDown(const juce::MouseEvent& e)
                                            b.durationSec,
                                            b.soundId,
                                            juce::String(b.customFilePath),
+                                           b.isLooping,
+                                           b.loopDurationSec,
                                            e.getPosition());
                     return;
                 }

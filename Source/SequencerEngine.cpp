@@ -17,11 +17,12 @@ std::vector<SequencerEvent> SequencerEngine::update(const TransportClock&    clo
         if (block.soundId < 0)
             continue;
 
-        // ── Start ─────────────────────────────────────────────────────────────
+        // ── Start (first hit) ─────────────────────────────────────────────────
         if (!block.hasStarted && now >= block.startTimeSec)
         {
             block.hasStarted = true;
             block.isPlaying  = true;
+            block.loopIterationsFired = 1;
 
             SequencerEvent ev;
             ev.type           = SequencerEventType::Start;
@@ -32,6 +33,52 @@ std::vector<SequencerEvent> SequencerEngine::update(const TransportClock&    clo
             ev.blockY         = static_cast<float>(block.pos.y);
             ev.blockZ         = static_cast<float>(block.pos.z);
             eventBuffer_.push_back(ev);
+        }
+
+        // ── Loop retrigger ───────────────────────────────────────────────────
+        // For looping blocks, fire Stop+Start every durationSec until the
+        // would-be retrigger time runs past (startTimeSec + loopDurationSec).
+        if (block.isLooping && block.hasStarted && !block.hasFinished
+            && block.durationSec > 0.001)
+        {
+            const double playbackEnd = block.startTimeSec + block.loopDurationSec;
+            const double relTime     = now - block.startTimeSec;
+            const int    expected    = static_cast<int>(relTime / block.durationSec) + 1;
+
+            while (block.loopIterationsFired < expected)
+            {
+                const double iterStart =
+                    block.startTimeSec
+                    + block.loopIterationsFired * block.durationSec;
+
+                if (iterStart >= playbackEnd)
+                    break;   // would start after the loop window closes
+
+                // Stop the previous iteration cleanly
+                {
+                    SequencerEvent stopEv;
+                    stopEv.type           = SequencerEventType::Stop;
+                    stopEv.blockSerial    = block.serial;
+                    stopEv.soundId        = block.soundId;
+                    stopEv.triggerTimeSec = iterStart;
+                    eventBuffer_.push_back(stopEv);
+                }
+
+                // Start the next iteration
+                {
+                    SequencerEvent startEv;
+                    startEv.type           = SequencerEventType::Start;
+                    startEv.blockSerial    = block.serial;
+                    startEv.soundId        = block.soundId;
+                    startEv.triggerTimeSec = iterStart;
+                    startEv.blockX         = static_cast<float>(block.pos.x);
+                    startEv.blockY         = static_cast<float>(block.pos.y);
+                    startEv.blockZ         = static_cast<float>(block.pos.z);
+                    eventBuffer_.push_back(startEv);
+                }
+
+                block.loopIterationsFired++;
+            }
         }
 
         // ── Movement keyframes ────────────────────────────────────────────────
@@ -67,7 +114,7 @@ std::vector<SequencerEvent> SequencerEngine::update(const TransportClock&    clo
             }
         }
 
-        // ── Stop ──────────────────────────────────────────────────────────────
+        // ── Stop (final) ──────────────────────────────────────────────────────
         if (block.hasStarted && !block.hasFinished && now >= block.endTimeSec())
         {
             block.hasFinished = true;

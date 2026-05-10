@@ -19,11 +19,13 @@
 #include "MathUtils.h"
 #include "BlockType.h"
 #include <string>
+
 struct MovementKeyFrame
 {
     double timeSec;   // Time relative to block start
     Vec3i  position;  // Absolute world position at this keyframe
 };
+
 struct BlockEntry
 {
     // ── Identity ──────────────────────────────────────────────────────────────
@@ -38,6 +40,11 @@ struct BlockEntry
     // ── Timing (seconds relative to transport origin) ─────────────────────────
     double startTimeSec = 0.0;
     double durationSec  = 1.0;
+
+    // ── Loop ──────────────────────────────────────────────────────────────────
+    bool   isLooping           = false;  ///< When true, re-trigger every durationSec
+    double loopDurationSec     = 4.0;    ///< Total wallclock seconds the loop runs
+    int    loopIterationsFired = 0;      ///< Runtime: count of Start events fired this play
 
     // Recording state
     bool isRecordingMovement = false;
@@ -59,15 +66,22 @@ struct BlockEntry
     bool isPlaying   = false;
 
     // ── Helpers ───────────────────────────────────────────────────────────────
-    double endTimeSec() const noexcept { return startTimeSec + durationSec; }
+
+    /// End time used for sequencer / transport bookkeeping.
+    /// Loop blocks span their full loopDurationSec; non-loop blocks use durationSec.
+    double endTimeSec() const noexcept
+    {
+        return startTimeSec + (isLooping ? loopDurationSec : durationSec);
+    }
 
     void resetPlaybackState()
     {
-        hasStarted = false;
+        hasStarted  = false;
         hasFinished = false;
-        isPlaying = false;
+        isPlaying   = false;
         currentKeyframeIndex = 0;
-        
+        loopIterationsFired  = 0;
+
         triggeredKeyframes.clear();
         if (hasRecordedMovement && !recordedMovement.empty())
         {

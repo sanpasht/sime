@@ -9,46 +9,10 @@
 
 MainComponent::MainComponent()
 {
-    // ── Startup menu ──────────────────────────────────────────────────────────
-    addAndMakeVisible(startupMenu_);
-    startupMenu_.setAlwaysOnTop(true);
+    // ── Startup menu — DISABLED, jump straight to main UI ────────────────────
+    showingStartup_ = false;
+    startupMenu_.setVisible(false);
 
-    startupMenu_.onNewScene = [this]
-    {
-        dismissStartupMenu();
-        newScene();
-    };
-
-    startupMenu_.onOpenScene = [this]
-    {
-        dismissStartupMenu();
-        openScene();
-    };
-
-    startupMenu_.onContinue = [this]
-    {
-        auto autosave = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
-                            .getChildFile("SIME").getChildFile("autosave.sime");
-        dismissStartupMenu();
-        loadSceneFromFile(autosave.getFullPathName());
-    };
-
-    startupMenu_.onRecentFile = [this](const juce::String& path)
-    {
-        dismissStartupMenu();
-        loadSceneFromFile(path);
-    };
-
-    // Hide main app components until the user dismisses the startup screen
-    view           .setVisible(false);
-    sidebar        .setVisible(false);
-    transportBar   .setVisible(false);
-    blockTypeCombo .setVisible(false);
-    typePill_      .setVisible(false);
-    newBtn         .setVisible(false);
-    openBtn        .setVisible(false);
-    saveBtn        .setVisible(false);
-    saveAsBtn      .setVisible(false);
     addAndMakeVisible(view);
     addAndMakeVisible(sidebar);
     addAndMakeVisible(transportBar);
@@ -137,16 +101,20 @@ MainComponent::MainComponent()
     view.onRequestBlockEdit = [this](int serial, BlockType type,
                                      double start, double dur,
                                      int soundId, const juce::String& customFile,
+                                     bool isLooping, double loopDur,
                                      juce::Point<int> posInView)
     {
         juce::Point<int> screenPos = view.localPointToGlobal(posInView);
-        editPopup.showAt(serial, type, start, dur, soundId, customFile, screenPos);
+        editPopup.showAt(serial, type, start, dur, soundId, customFile,
+                         isLooping, loopDur, screenPos);
     };
 
     editPopup.onCommit = [this](int serial, double start, double dur,
-                                int sid, const juce::String& customFile)
+                                int sid, const juce::String& customFile,
+                                bool isLooping, double loopDur)
     {
-        view.applyBlockEdit(serial, start, dur, sid, customFile);
+        view.applyBlockEdit(serial, start, dur, sid, customFile,
+                            isLooping, loopDur);
     };
 
     editPopup.onCancel = [this]()
