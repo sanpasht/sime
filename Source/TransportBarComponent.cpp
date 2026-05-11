@@ -48,14 +48,21 @@ TransportBarComponent::TransportBarComponent()
             onBlockEdited(serial, start, duration);
     };
 
+    timeline.onRectRegionClicked = [this](int serial)
+    {
+        if (onTimelineBlockClicked)
+            onTimelineBlockClicked(serial);
+    };
+
     collapseButton.onClick = [this]
     {
         isCollapsed_ = !isCollapsed_;
 
+        collapseButton.setButtonText(isCollapsed_ ? "A" : "V");
         timeline.setVisible(!isCollapsed_);
-        stopButton.setVisible(!isCollapsed_);
 
-        collapseButton.setButtonText(isCollapsed_ ? "⌃" : "⌄");
+        if (onHeightChanged)
+            onHeightChanged();
 
         resized();
         repaint();
@@ -125,99 +132,84 @@ void TransportBarComponent::paint(juce::Graphics& g)
 {
     auto bounds = getLocalBounds();
 
-    // ── Background ────────────────────────────────────────────────────────────
     g.setColour(juce::Colour(0xff0e1018));
     g.fillRect(bounds);
 
-    // Top separator line
     g.setColour(juce::Colour(0xff2a3060));
     g.fillRect(0, 0, bounds.getWidth(), 1);
 
-    g.setColour(juce::Colour(0xff202436));
-    g.fillRect(0, kControlHeight - 1, bounds.getWidth(), 1);
-
-    // ── Progress bar area ─────────────────────────────────────────────────────
-    // Sits to the right of the buttons and time label
-    const int leftReserve = kPad + kBtnW + 4 + kBtnW + kPad + 72 + kPad;
-    const int barX  = leftReserve;
-    const int barY  = (bounds.getHeight() - 8) / 2;
-    const int barW  = bounds.getWidth() - barX - kPad;
-    const int barH  = 8;
-
-    if (barW > 0)
+    if (isCollapsed_ && !miniProgressBounds_.isEmpty())
     {
-        // Track
-        g.setColour(juce::Colour(0xff1e2235));
-        g.fillRoundedRectangle((float)barX, (float)barY,
-                               (float)barW, (float)barH, 3.f);
+        float progress = 0.0f;
 
-        // Fill — scales by totalDuration_; if 0 (unknown) fill proportionally
-        // to a rolling 10-second window so something is always visible
-        double displayDuration = (totalDuration_ > 0.0) ? totalDuration_
-                                                         : std::max(currentTime_ + 1.0, 10.0);
-        float  fillFraction    = (displayDuration > 0.0)
-                                   ? (float)std::min(currentTime_ / displayDuration, 1.0)
-                                   : 0.f;
-        float  fillW           = fillFraction * (float)barW;
+        if (totalDuration_ > 0.0)
+            progress = (float)(currentTime_ / totalDuration_);
 
-        if (fillW > 0.f)
-        {
-            // Gradient: blue → cyan
-            juce::ColourGradient grad(juce::Colour(0xff2255cc), (float)barX, 0.f,
-                                      juce::Colour(0xff00ccff), (float)(barX + barW), 0.f,
-                                      false);
-            g.setGradientFill(grad);
-            g.fillRoundedRectangle((float)barX, (float)barY, fillW, (float)barH, 3.f);
-        }
+        progress = juce::jlimit(0.0f, 1.0f, progress);
 
-        // Playhead tick
-        if (fillW > 0.f)
-        {
-            g.setColour(juce::Colours::white.withAlpha(0.8f));
-            g.fillRect((int)(barX + fillW) - 1, barY - 2, 2, barH + 4);
-        }
+        auto bar = miniProgressBounds_.toFloat();
 
-        // Track border
-        g.setColour(juce::Colour(0xff2a3060));
-        g.drawRoundedRectangle((float)barX, (float)barY,
-                               (float)barW, (float)barH, 3.f, 1.f);
+        // background track
+        g.setColour(juce::Colour(0xff202436));
+        g.fillRoundedRectangle(bar, 4.0f);
+
+        // filled progress
+        auto filled = bar;
+        filled.setWidth(bar.getWidth() * progress);
+
+        g.setColour(juce::Colour(0xff3f6fff));
+        g.fillRoundedRectangle(filled, 4.0f);
+
+        // small playhead dot
+        const float headX = bar.getX() + bar.getWidth() * progress;
+        const float headY = bar.getCentreY();
+
+        g.setColour(juce::Colours::white);
+        g.fillEllipse(headX - 4.0f, headY - 4.0f, 8.0f, 8.0f);
     }
 
-    // ── Time display ──────────────────────────────────────────────────────────
-    const int timeX = kPad + kBtnW + 4 + kBtnW + kPad;
-    const int mins  = (int)(currentTime_ / 60.0);
-    const int secs  = (int)(currentTime_) % 60;
-    const int ms    = (int)((currentTime_ - std::floor(currentTime_)) * 100.0);
-
-    juce::String timeStr = juce::String::formatted("%d:%02d.%02d", mins, secs, ms);
-
-    g.setFont(juce::Font(juce::Font::getDefaultMonospacedFontName(), 13.f,
-                         juce::Font::plain));
-    g.setColour(juce::Colour(0xffaabbdd));
-    g.drawText(timeStr,
-               timeX, 0, 68, bounds.getHeight(),
-               juce::Justification::centredLeft);
+    if (!isCollapsed_)
+    {
+        g.setColour(juce::Colour(0xff202436));
+        g.fillRect(0, kControlHeight - 1, bounds.getWidth(), 1);
+    }
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 
 void TransportBarComponent::resized()
 {
     auto bounds = getLocalBounds();
-
     auto controlStrip = bounds.removeFromTop(kControlHeight);
 
-    playPauseButton.setBounds(controlStrip.removeFromLeft(55).reduced(5));
+    playPauseButton.setBounds(controlStrip.removeFromLeft(65).reduced(6, 5));
+    stopButton.setBounds(controlStrip.removeFromLeft(65).reduced(6, 5));
 
-    if (!isCollapsed_)
-        stopButton.setBounds(controlStrip.removeFromLeft(55).reduced(5));
+    timeLabel.setBounds(controlStrip.removeFromLeft(170).reduced(6, 5));
 
-    timeLabel.setBounds(controlStrip.removeFromLeft(150).reduced(5));
+    // Reserve collapse button area FIRST
+    auto rightButtonArea = controlStrip.removeFromRight(45);
+    collapseButton.setBounds(rightButtonArea.reduced(6, 5));
 
-    collapseButton.setBounds(controlStrip.removeFromRight(35).reduced(5));
+    if (isCollapsed_)
+    {
+        // Now this is only the safe middle space
+        miniProgressBounds_ = controlStrip.reduced(12, 15);
+    }
+    else
+    {
+        miniProgressBounds_ = {};
+    }
 
-    if (!isCollapsed_)
+    if (isCollapsed_)
+    {
+        timeline.setVisible(false);
+        timeline.setBounds(0, 0, 0, 0);
+    }
+    else
+    {
+        timeline.setVisible(true);
         timeline.setBounds(bounds);
+    }
 }
 
 void TransportBarComponent::setBlocks(const std::vector<BlockEntry>& blocks)

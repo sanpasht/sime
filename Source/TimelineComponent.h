@@ -39,7 +39,7 @@ public:
     void setPlaying(bool playing);
     
     /// Callback when user clicks a block region
-    std::function<void(int blockSerial)> onBlockClicked;
+    std::function<void(int blockSerial)> onRectRegionClicked;
     
     /// Callback when user drags to edit a block's timing
     std::function<void(int serial, double startTime, double duration)> onBlockEdited;

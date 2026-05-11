@@ -268,7 +268,7 @@ void ViewPortComponent::renderOpenGL()
         nextSerial = maxSerial + 1;
         renderer.meshDirty = true;
 
-        std::vector<SidebarComponent::BlockEntry> uiBlocks;
+        std::vector<SidebarComponent::Block> uiBlocks;
         uiBlocks.reserve(blockList.size());
         for (const auto& e : blockList)
             uiBlocks.push_back({ e.serial, e.pos });
@@ -308,7 +308,7 @@ void ViewPortComponent::renderOpenGL()
         }
         pendingOps.clear();
         if (changed) {
-            std::vector<SidebarComponent::BlockEntry> uiBlocks;
+            std::vector<SidebarComponent::Block> uiBlocks;
             uiBlocks.reserve(blockList.size());
 
             for (const auto& e : blockList)
@@ -458,7 +458,7 @@ void ViewPortComponent::renderOpenGL()
             blockList.push_back(newBlock);
             lastPlacedPos = placePos;
             renderer.meshDirty = true;
-            std::vector<SidebarComponent::BlockEntry> uiBlocks;
+            std::vector<SidebarComponent::Block> uiBlocks;
             uiBlocks.reserve(blockList.size());
 
             for (const auto& e : blockList)
@@ -489,7 +489,7 @@ void ViewPortComponent::renderOpenGL()
                 [&](const BlockEntry& e){ return e.pos == hit.voxelPos; });
             if (it != blockList.end()) blockList.erase(it);
             renderer.meshDirty = true;
-            std::vector<SidebarComponent::BlockEntry> uiBlocks;
+            std::vector<SidebarComponent::Block> uiBlocks;
             uiBlocks.reserve(blockList.size());
 
             for (const auto& e : blockList)
@@ -679,10 +679,13 @@ void ViewPortComponent::renderOpenGL()
         {
             renderer.renderHighlight(vp, placePos, Vec3f{ 0.2f, 1.f, 0.3f });
         }
-        // Highlight playing blocks
-        for (const auto& b : blockList)
+        for (const auto& b : blockList){
             if (b.isPlaying)
                 renderer.renderHighlight(vp, b.pos, Vec3f{ 0.f, 1.f, 0.3f });
+            else if(b.serial == highlightedBlockSerial_)
+                renderer.renderHighlight(vp, b.pos, Vec3f{ 1.f, 0.85f, 0.1f });
+        }
+            
     }
     
     
@@ -1167,15 +1170,28 @@ void ViewPortComponent::mouseDown(const juce::MouseEvent& e)
     // raycast avoids the camera race-condition that caused missed placements.
     if (e.mods.isLeftButtonDown())
     {
-        if (editMode){
+        const int   w = getWidth(), h = getHeight();
+        const float aspect = (h > 0) ? (float)w / h : 1.f;
+        const Mat4  view_  = camera.getViewMatrix();
+        const Mat4  proj   = camera.getProjectionMatrix(aspect);
+        Vec3f rayDir = Raycaster::screenToRay(e.position.x, e.position.y,
+                                              (float)w, (float)h, view_, proj);
+        RaycastResult hit = Raycaster::cast(camera.getPosition(), rayDir, voxelGrid);
 
-        }
-        else{
+        if(hit.hit){
+            for (const auto& b : blockList)
+            {
+                if (b.pos == hit.voxelPos)
+                {
+                    if (onBlockSelected)
+                        onBlockSelected(b.serial);
+                }
+            }
+
+        }else{
             juce::ScopedLock lock(clickMutex);
             pendingPlace = { true, e.position.x, e.position.y, e.mods.isShiftDown() };
-
-        } // no placements in edit mode
-      
+        }
     }
 
 
@@ -1627,3 +1643,61 @@ void ViewPortComponent::updateBlockTiming(int serial, double start, double durat
 }
 
 void ViewPortComponent::focusGained(FocusChangeType) {}
+
+
+void ViewPortComponent::highlightBlock(int serial)
+{
+    highlightedBlockSerial_ = serial;
+    repaint();
+}
+
+std::optional<BlockEntry> ViewPortComponent::getBlockBySerial(int serial) const
+{
+    for (const auto& b : blockList)
+        if (b.serial == serial)
+            return b;
+
+    return std::nullopt;
+}
+
+
+void ViewPortComponent::applySidebarBlockInfo(
+    int serial,
+    Vec3i pos,
+    double start,
+    double duration,
+    bool movementEnabled)
+{
+    for (auto& b : blockList)
+    {
+        if (b.serial == serial)
+        {
+            if(b.pos != pos){
+                if (voxelGrid.move(b.pos, pos))
+                    b.pos = pos;
+                else{
+                     auto* dialog = new juce::AlertWindow("Unable to Move Block",
+                                             "Failed to move block " + juce::String(serial) + " to new position." ,
+                                             juce::AlertWindow::WarningIcon);
+                    dialog->addButton("Ok",  1);
+                    dialog->enterModalState(true,
+                            juce::ModalCallbackFunction::create([](int result)
+                            {
+                                juce::ignoreUnused(result);
+                            }),
+                            true);
+                }
+            }
+            b.startTimeSec = start;
+            b.durationSec = duration;
+
+            if (!movementEnabled)
+                b.hasRecordedMovement = false;
+            else if (!b.recordedMovement.empty())
+                b.hasRecordedMovement = true;
+
+            b.resetPlaybackState();
+            break;
+        }
+    }
+}

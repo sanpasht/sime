@@ -58,12 +58,17 @@ public:
 
     // ── Edit mode API (called by MainComponent) ───────────────────────────────
 
+    std::optional<BlockEntry> getBlockBySerial(int serial) const;
+    void applySidebarBlockInfo(int serial, Vec3i pos, double start, double duration, bool movementEnabled);
+
     /// Fired when user clicks a block in edit mode.
     /// Args: serial, blockType, start, dur, soundId, customFilePath,
     ///       isLooping, loopDurationSec, viewLocalPos
     std::function<void(int, BlockType, double, double, int,
                        const juce::String&, bool, double,
                        juce::Point<int>)> onRequestBlockEdit;
+
+    std::function<void(int serial)> onBlockSelected;
     
     void updateBlockTiming(int serial, double startTime, double duration);
 
@@ -166,6 +171,7 @@ public:
         selectedSerial = -1;
     }
 
+    void highlightBlock(int serial);
 
     // ── Transport state queries (called by MainComponent to update transport bar) ─────
 
@@ -358,6 +364,7 @@ private:
     // =========================================================================
     std::vector<BlockEntry> blockList;
     int                     nextSerial = 1;
+    int highlightedBlockSerial_ = -1;
 
     // =========================================================================
     // Sidebar / toggle
