@@ -19,6 +19,17 @@ MainComponent::MainComponent()
 
     // ── Wire sidebar collapse ─────────────────────────────────────────────────
     view.setSidebarComponent(&sidebar);
+
+
+    view.onBlockSelected = [this](int serial)
+    {
+        auto block = view.getBlockBySerial(serial);
+
+        if (block)
+            sidebar.showBlockInfo(*block);
+    };
+
+    
     sidebar.onCollapsedChanged = [this](bool isNowCollapsed)
     {
         isSidebarCollapsed = isNowCollapsed;
@@ -26,6 +37,12 @@ MainComponent::MainComponent()
     };
 
     // ── Transport bar ─────────────────────────────────────────────────────────
+
+    transportBar.onHeightChanged = [this]()
+    {
+        resized();
+    };
+    
     transportBar.onPlay = [this]
     {
         view.transportPlay();
@@ -46,6 +63,8 @@ MainComponent::MainComponent()
     transportBar.onBlockEdited = [this](int serial, double start, double duration)
     {
         view.updateBlockTiming(serial, start, duration);
+        auto block = view.getBlockBySerial(serial);
+        sidebar.showBlockInfo(*block);
     };
 
     transportBar.onTimelineBlockClicked = [this](int serial) { 
@@ -308,7 +327,7 @@ void MainComponent::resized()
     sidebar.setBounds(area.removeFromLeft(sidebarWidth));
 
     // Transport bar — bottom
-    transportBar.setBounds(area.removeFromBottom(transportBar.getCurrentHeight()));
+    transportBar.setBounds(area.removeFromBottom(transportBar.getPreferredHeight()));
 
     // Block type toolbar — top of viewport area
     auto toolbarArea = area.removeFromTop(kToolbarH);

@@ -37,10 +37,12 @@ public:
     void resized() override;
     void setTimelinePlaying(bool playing);
 
-    int getCurrentHeight() const
+    int getPreferredHeight() const
     {
-        return isCollapsed_ ? kCollapsedHeight : kExpandedHeight;
-    }
+        return isCollapsed_ ? kControlHeight : kExpandedHeight;
+    };
+
+    std::function<void()> onHeightChanged;  
 
     std::function<void(int serial)> onTimelineBlockClicked;
 
@@ -56,15 +58,11 @@ private:
     juce::TextButton collapseButton { "⌄" };
     juce::Label timeLabel;
     TimelineComponent timeline;
+    juce::Rectangle<int> miniProgressBounds_;
     
     // ── Internal display state ────────────────────────────────────────────────
     static constexpr int kExpandedHeight  = 300;
-    static constexpr int kCollapsedHeight = 40;
     static constexpr int kControlHeight   = 40;
-
-
-    static constexpr int kHeight = kExpandedHeight;
-
 
     bool isCollapsed_ = false; 
     bool   isPlaying_    = false;

@@ -67,6 +67,8 @@ public:
     std::function<void(int, BlockType, double, double, int,
                        const juce::String&, bool, double,
                        juce::Point<int>)> onRequestBlockEdit;
+
+    std::function<void(int serial)> onBlockSelected;
     
     void updateBlockTiming(int serial, double startTime, double duration);
 

@@ -69,6 +69,22 @@ public:
         return voxels;
     }
 
+ bool move(const Vec3i& from, const Vec3i& to)
+{
+    if (from == to)
+        return true;
+
+    if (voxels.find(from) == voxels.end())
+        return false;
+
+    if (voxels.find(to) != voxels.end())
+        return false;
+
+    voxels.erase(from);
+    voxels.insert(to);
+    return true;
+}
+
 private:
     std::unordered_set<Vec3i, Vec3iHash> voxels;
 };

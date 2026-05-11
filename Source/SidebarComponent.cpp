@@ -108,8 +108,6 @@ void SidebarComponent::resized()
     const int tabX = 10;
     const int closeW = 34;
     const int closeGap = 8;
-    const int tabAreaW = getWidth() - tabX - closeW - closeGap - 10;
-    const int tabW = tabAreaW / 2;
 
     if (collapsed)
     {
@@ -130,9 +128,13 @@ void SidebarComponent::resized()
 
     toggleButton.setBounds(getWidth() - closeW - 8, tabY, closeW, tabH);
 
+    const int tabAreaW = getWidth() - tabX - closeW - closeGap - 10;
+    const int tabW = tabAreaW / 2;
+
     blockListButton.setBounds(tabX, tabY, tabW, tabH);
     infoButton.setBounds(tabX + tabW, tabY, tabW, tabH);
 
+    // Hide all info controls by default
     xEditor.setBounds(0, 0, 0, 0);
     yEditor.setBounds(0, 0, 0, 0);
     zEditor.setBounds(0, 0, 0, 0);
@@ -141,17 +143,15 @@ void SidebarComponent::resized()
     movementEnabledToggle.setBounds(0, 0, 0, 0);
     applyButton.setBounds(0, 0, 0, 0);
 
-    if (!isInfoPanelOpen())
+    if (!isInfoPanelOpen() || !selectedBlock_)
         return;
 
-    if (!selectedBlock_)
-        return;
-
-    const int margin = 14;
-    const int labelW = 80;
+    const int margin = 12;
+    const int labelW = 82;
     const int editorH = 30;
     const int rowGap = 14;
-    const int editorX = margin + labelW;
+
+    const int editorX = margin + labelW + 10;
     const int editorW = getWidth() - editorX - margin;
 
     int y = 86;
@@ -163,32 +163,36 @@ void SidebarComponent::resized()
     y += editorH + rowGap;
 
     zEditor.setBounds(editorX, y, editorW, editorH);
-    y += editorH + 22;
+    y += editorH + 24;
 
     startEditor.setBounds(editorX, y, editorW, editorH);
     y += editorH + rowGap;
 
     durationEditor.setBounds(editorX, y, editorW, editorH);
-    y += editorH + 22;
+    y += editorH + 24;
 
     movementEnabledToggle.setBounds(margin, y, getWidth() - 2 * margin, 28);
+    y += 40;
 
     applyButton.setBounds(margin, getHeight() - 52, getWidth() - 2 * margin, 36);
 }
 
 void SidebarComponent::paint(juce::Graphics& g)
 {
-    g.fillAll (juce::Colour (0xff0d1120));
+    const auto bg = juce::Colour(0xff0d1120);
+    const auto border = juce::Colour(0xff4f6a96);
+    const auto text = juce::Colour(0xffaac8e8);
+
+    g.fillAll(bg);
+
+    if (collapsed)
+        return;
 
     auto drawTab = [&](juce::TextButton& btn, bool active, const juce::String& label)
     {
         auto b = btn.getBounds().toFloat();
 
-        auto panelBg = juce::Colour(0xff0d1120);
-        auto inactiveBg = juce::Colour(0xff141b2e);
-        auto border = juce::Colour(0xff4f6a96);
-
-        g.setColour(active ? panelBg : inactiveBg);
+        g.setColour(active ? bg : juce::Colour(0xff141b2e));
         g.fillRect(b);
 
         g.setColour(border);
@@ -200,7 +204,6 @@ void SidebarComponent::paint(juce::Graphics& g)
         if (!active)
             g.drawLine(b.getX(), b.getBottom(), b.getRight(), b.getBottom(), 1.0f);
 
-        // draw text manually
         g.setColour(active ? juce::Colours::white : juce::Colour(0xffb8c7e6));
         g.setFont(13.0f);
         g.drawText(label, btn.getBounds(), juce::Justification::centred);
@@ -209,165 +212,153 @@ void SidebarComponent::paint(juce::Graphics& g)
     auto drawDividerSkippingActiveTab = [&](juce::TextButton& activeBtn)
     {
         auto b = activeBtn.getBounds();
-
-        auto border = juce::Colour(0xff4f6a96);
-
         int y = b.getBottom();
 
         g.setColour(border);
-
-        // Before active tab
-        g.drawLine(0.0f,
-                (float)y,
-                (float)b.getX(),
-                (float)y,
-                1.0f);
-
-        // After active tab
-        g.drawLine((float)b.getRight(),
-                (float)y,
-                (float)getWidth(),
-                (float)y,
-                1.0f);
+        g.drawLine(0.0f, (float)y, (float)b.getX(), (float)y, 1.0f);
+        g.drawLine((float)b.getRight(), (float)y, (float)getWidth(), (float)y, 1.0f);
     };
 
-    if (collapsed)
-    {
-        return;
-    }else{
-        drawTab(blockListButton, isBlockPanelOpen(), "Blocks");
-        drawTab(infoButton, isInfoPanelOpen(), "Info");
+    drawTab(blockListButton, isBlockPanelOpen(), "Blocks");
+    drawTab(infoButton, isInfoPanelOpen(), "Info");
 
-        drawDividerSkippingActiveTab(
-            isBlockPanelOpen()
-                ? blockListButton
-                : infoButton
-        );
+    drawDividerSkippingActiveTab(
+        isBlockPanelOpen() ? blockListButton : infoButton
+    );
+
+    const int contentTopY = 58;
+
+    if (isBlockPanelOpen())
+    {
         std::vector<Block> snapshot;
         {
             juce::ScopedLock lock(blockListMutex);
             snapshot = blockListUI;
         }
 
-        const int itemCount = (int) snapshot.size();
-        const int contentTopY = 58;
-        const int panelY = contentTopY;
-        const int panelW = getWidth();
-        const int panelH = getHeight();
+        const int itemCount = (int)snapshot.size();
 
-        g.setFont(juce::Font(16.5f).boldened());
+        g.setFont(juce::Font(16.0f).boldened());
         g.setColour(juce::Colour(0xff88aacc));
+        g.drawText("Blocks (" + juce::String(itemCount) + ")",
+                   12, contentTopY,
+                   getWidth() - 24, 28,
+                   juce::Justification::centredLeft);
 
-        if(isBlockPanelOpen()){
-            juce::String header = "Blocks (" + juce::String(itemCount) + ")";
-            g.drawText(header, 8, panelY + 5, panelW - 16, kHeaderH - 10,
-                juce::Justification::centredLeft, true);}
-
-       if (!blockListOpen || itemCount == 0)
+        if (itemCount == 0)
+        {
+            g.setFont(13.0f);
+            g.setColour(text.withAlpha(0.7f));
+            g.drawText("No blocks yet",
+                       12, contentTopY + 40,
+                       getWidth() - 24, 24,
+                       juce::Justification::centredLeft);
             return;
+        }
 
-        const int visibleContentH = panelH - (panelY + kHeaderH);
-        if (visibleContentH <= 0)
-            return;
-
+        const int listY = contentTopY + 40;
+        const int visibleContentH = getHeight() - listY;
         const int totalContentH = itemCount * kRowH + 6;
         const int maxScroll = std::max(0, totalContentH - visibleContentH);
+
         blockListScroll = std::clamp(blockListScroll, 0, maxScroll);
 
         g.saveState();
-        g.reduceClipRegion(0, panelY + kHeaderH, panelW, visibleContentH);
+        g.reduceClipRegion(0, listY, getWidth(), visibleContentH);
 
-        g.setFont(juce::Font(11.f));
+        g.setFont(11.0f);
 
-
-        if(isBlockPanelOpen()){
-            for (int i = 0; i < itemCount; ++i)
-            {
-                int rowY = panelY + kHeaderH + 3 + i * kRowH - blockListScroll;
-
-                if (rowY + kRowH < panelY + kHeaderH) continue;
-                if (rowY > panelH) break;
-
-                if (i % 2 == 0)
-                {
-                    g.setColour(juce::Colour(0x15ffffff));
-                    g.fillRect(1, rowY, panelW - 2, kRowH);
-                }
-
-                const auto& e = snapshot[i];
-                juce::String row = "Block " + juce::String(e.serial)
-                                + "  (" + juce::String(e.pos.x)
-                                + ", "  + juce::String(e.pos.y)
-                                + ", "  + juce::String(e.pos.z) + ")";
-
-                g.setColour(juce::Colour(0xffaac8e8));
-                g.drawText(row, 8, rowY + 3, panelW - 16, kRowH - 6,
-                        juce::Justification::centredLeft, true);
-            }
-        }
-        if (isInfoPanelOpen())
+        for (int i = 0; i < itemCount; ++i)
         {
-            const int margin = 12;
-            const int labelW = 70;
-            const int editorH = 26;
-            const int rowGap = 10;
-            const int editorX = margin + labelW;
+            int rowY = listY + 3 + i * kRowH - blockListScroll;
 
-            if (!selectedBlock_)
+            if (rowY + kRowH < listY)
+                continue;
+
+            if (rowY > getHeight())
+                break;
+
+            if (i % 2 == 0)
             {
-                g.setColour(juce::Colour(0xff88aacc));
-                g.setFont(15.0f);
-                g.drawText("Select a block",
-                        margin, kPanelTopY + 45,
-                        getWidth() - 2 * margin, 30,
-                        juce::Justification::centredLeft);
-                return;
-            }else{
-                int y = contentTopY + 10;
-
-                g.setColour(juce::Colour(0xff88aacc));
-                g.setFont(juce::Font(16.0f).boldened());
-                g.drawText("Block " + juce::String(selectedBlock_->serial),
-                        margin, y,
-                        getWidth() - 2 * margin, 24,
-                        juce::Justification::centredLeft);
-
-                y = contentTopY + 45;
-
-                g.setColour(juce::Colour(0xffaac8e8));
-                g.setFont(13.0f);
-
-                g.drawText("X:", margin, y, labelW, editorH, juce::Justification::centredLeft);
-                y += editorH + rowGap;
-
-                g.drawText("Y:", margin, y, labelW, editorH, juce::Justification::centredLeft);
-                y += editorH + rowGap;
-
-                g.drawText("Z:", margin, y, labelW, editorH, juce::Justification::centredLeft);
-                y += editorH + 18;
-
-                g.drawText("Start:", margin, y, labelW, editorH, juce::Justification::centredLeft);
-                y += editorH + rowGap;
-
-                g.drawText("Duration:", margin, y, labelW, editorH, juce::Justification::centredLeft);
-                y += editorH + 18;
-
-                y += 36;
-
-                juce::Rectangle<int> graphArea(
-                    margin,
-                    y,
-                    getWidth() - 2 * margin,
-                    120
-                );
-
-                movementGraph(g, *selectedBlock_, graphArea);
-
-                return;
-                
+                g.setColour(juce::Colour(0x15ffffff));
+                g.fillRect(1, rowY, getWidth() - 2, kRowH);
             }
+
+            const auto& e = snapshot[i];
+
+            juce::String row = "Block " + juce::String(e.serial)
+                             + "  (" + juce::String(e.pos.x)
+                             + ", "  + juce::String(e.pos.y)
+                             + ", "  + juce::String(e.pos.z) + ")";
+
+            g.setColour(text);
+            g.drawText(row,
+                       8, rowY + 3,
+                       getWidth() - 16, kRowH - 6,
+                       juce::Justification::centredLeft,
+                       true);
         }
+
         g.restoreState();
+        return;
+    }
+
+    if (isInfoPanelOpen())
+    {
+        const int margin = 12;
+        const int labelW = 82;
+        const int editorH = 30;
+        const int rowGap = 14;
+
+        if (!selectedBlock_)
+        {
+            g.setFont(15.0f);
+            g.setColour(text);
+            g.drawText("Select a block",
+                       margin, contentTopY + 20,
+                       getWidth() - 2 * margin, 30,
+                       juce::Justification::centredLeft);
+            return;
+        }
+
+        g.setFont(juce::Font(16.0f).boldened());
+        g.setColour(juce::Colour(0xff88aacc));
+        g.drawText("Block " + juce::String(selectedBlock_->serial),
+                   margin, contentTopY,
+                   getWidth() - 2 * margin, 26,
+                   juce::Justification::centredLeft);
+
+        int y = 86;
+
+        g.setFont(13.0f);
+        g.setColour(text);
+
+        g.drawText("X:", margin, y, labelW, editorH, juce::Justification::centredLeft);
+        y += editorH + rowGap;
+
+        g.drawText("Y:", margin, y, labelW, editorH, juce::Justification::centredLeft);
+        y += editorH + rowGap;
+
+        g.drawText("Z:", margin, y, labelW, editorH, juce::Justification::centredLeft);
+        y += editorH + 24;
+
+        g.drawText("Start:", margin, y, labelW, editorH, juce::Justification::centredLeft);
+        y += editorH + rowGap;
+
+        g.drawText("Duration:", margin, y, labelW, editorH, juce::Justification::centredLeft);
+        y += editorH + 24;
+
+        y += 40;
+
+        juce::Rectangle<int> graphArea(
+            margin,
+            y,
+            getWidth() - 2 * margin,
+            145
+        );
+
+        movementGraph(g, *selectedBlock_, graphArea);
+        return;
     }
 }
 

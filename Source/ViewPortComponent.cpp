@@ -1170,15 +1170,28 @@ void ViewPortComponent::mouseDown(const juce::MouseEvent& e)
     // raycast avoids the camera race-condition that caused missed placements.
     if (e.mods.isLeftButtonDown())
     {
-        if (editMode){
+        const int   w = getWidth(), h = getHeight();
+        const float aspect = (h > 0) ? (float)w / h : 1.f;
+        const Mat4  view_  = camera.getViewMatrix();
+        const Mat4  proj   = camera.getProjectionMatrix(aspect);
+        Vec3f rayDir = Raycaster::screenToRay(e.position.x, e.position.y,
+                                              (float)w, (float)h, view_, proj);
+        RaycastResult hit = Raycaster::cast(camera.getPosition(), rayDir, voxelGrid);
 
-        }
-        else{
+        if(hit.hit){
+            for (const auto& b : blockList)
+            {
+                if (b.pos == hit.voxelPos)
+                {
+                    if (onBlockSelected)
+                        onBlockSelected(b.serial);
+                }
+            }
+
+        }else{
             juce::ScopedLock lock(clickMutex);
             pendingPlace = { true, e.position.x, e.position.y, e.mods.isShiftDown() };
-
-        } // no placements in edit mode
-      
+        }
     }
 
 
@@ -1659,7 +1672,22 @@ void ViewPortComponent::applySidebarBlockInfo(
     {
         if (b.serial == serial)
         {
-            b.pos = pos;
+            if(b.pos != pos){
+                if (voxelGrid.move(b.pos, pos))
+                    b.pos = pos;
+                else{
+                     auto* dialog = new juce::AlertWindow("Unable to Move Block",
+                                             "Failed to move block " + juce::String(serial) + " to new position." ,
+                                             juce::AlertWindow::WarningIcon);
+                    dialog->addButton("Ok",  1);
+                    dialog->enterModalState(true,
+                            juce::ModalCallbackFunction::create([](int result)
+                            {
+                                juce::ignoreUnused(result);
+                            }),
+                            true);
+                }
+            }
             b.startTimeSec = start;
             b.durationSec = duration;
 
