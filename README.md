@@ -15,11 +15,13 @@ Move a block left or right and the audio pans. Place it higher and the pitch goe
 4. [Workflow](#workflow)
 5. [Block Movement Recording](#block-movement-recording)
 6. [Save / Load Scenes](#save--load-scenes)
-7. [Audio Architecture](#audio-architecture)
-8. [Project Structure](#project-structure)
-9. [Where to Change Things](#where-to-change-things)
-10. [Known Bugs & Issues](#known-bugs--issues)
-11. [Audio library (detailed report)](md%20files/AUDIO_LIBRARY_REPORT.md) — Task 3: 23 block types, CSV index, lazy-loaded WAV picker
+7. [Export Audio](#export-audio)
+8. [Audio Architecture](#audio-architecture)
+9. [Project Structure](#project-structure)
+10. [Where to Change Things](#where-to-change-things)
+11. [Known Bugs & Issues](#known-bugs--issues)
+12. [Audio library (detailed report)](md%20files/AUDIO_LIBRARY_REPORT.md) — Task 3: 23 block types, CSV index, lazy-loaded WAV picker
+13. [Export audio (detailed report)](md%20files/EXPORT_AUDIO_REPORT.md) — Offline bounce, formats, limitations
 
 ---
 
@@ -130,20 +132,21 @@ All four views look at the origin (0,0,0) from a distance with a slight downward
 | `Alt + LMB` on block (edit mode) | Select block and start movement recording |
 | Play / Pause / Stop | Transport bar buttons at the bottom |
 
-### Scene File Toolbar (top-right)
+### File menu (top-right)
 
-| Button | Action |
+| Item | Action |
 |--------|--------|
-| **New** | Clear the current scene and start fresh |
-| **Open** | Open a `.sime` file from disk |
+| **New Scene** | Clear the current scene and start fresh |
+| **Open Scene…** | Open a `.sime` file from disk |
 | **Save** | Save to the current file (prompts if no file loaded) |
-| **Save As** | Always prompts for a new file name |
+| **Save As…** | Always prompts for a new file name |
+| **Export Audio…** | Bounce the full timeline mix to WAV, FLAC, AIFF, or Ogg Vorbis |
 
 The app also auto-saves to `%APPDATA%/SIME/autosave.sime` when you close it, and auto-loads that scene on the next launch.
 
 ### Block type toolbar and sound picker (top of viewport)
 
-To the **left** of the New / Open / Save / Save As buttons:
+To the **left** of the **File** button:
 
 | UI | What it does |
 |----|----------------|
@@ -265,10 +268,23 @@ When the app closes, it saves the current scene to `%APPDATA%/SIME/autosave.sime
 ### Workflow
 
 1. Build a scene with blocks.
-2. Click **Save** (or **Save As**) in the top-right toolbar — choose a location and name.
+2. Open the **File** menu (top-right of the toolbar row), then choose **Save** or **Save As** and pick a location and name.
 3. Close and reopen the app — your scene is restored from the auto-save.
-4. Click **Open** to load a different `.sime` file at any time.
-5. Click **New** to start a blank scene.
+4. From **File → Open Scene…** load a different `.sime` file at any time.
+5. From **File → New Scene** start a blank scene.
+
+---
+
+## Export Audio
+
+You can bounce the **full mixed stereo output** for the entire timeline (from time 0 through the latest block end time) to a file. This is an **offline** render: it does not play through the speakers; it steps the same `TransportClock` + `SequencerEngine` logic in small time slices and mixes with the same gain, pan, and pitch rules as `AudioEngine`.
+
+- **File → Export Audio…** — choose a format, then a save path.
+- **Formats** — **WAV** and **AIFF** (16-bit PCM, lossless), **FLAC** (lossless), **Ogg Vorbis** (lossy). MP3 and AAC/M4A are not shipped in this build because JUCE does not provide a working MP3 encoder on all platforms, and AAC depends on OS-specific APIs; see the detailed report for extension options.
+- **Length** — matches the timeline span (same idea as the transport bar duration: maximum of all blocks’ `endTimeSec()`). Empty scenes cannot be exported.
+- **Sample rate** — matches the live audio device rate when possible; if the chosen file format only supports specific rates, the exporter picks the closest supported rate.
+
+For implementation notes, limits (for example the 20-minute safety cap), and file layout references, see [md files/EXPORT_AUDIO_REPORT.md](md%20files/EXPORT_AUDIO_REPORT.md).
 
 ---
 
@@ -353,6 +369,8 @@ SIME/
     ├── BlockEditPopup.cpp/h       # Floating block edit dialog (embeds picker)
     ├── MovementConfirmPopup.h     # Movement recording confirm dialog
     ├── SceneFile.cpp/h            # Binary .sime scene save/load
+    ├── SceneAudioExporter.cpp/h   # Offline timeline bounce + format writers
+    ├── ExportAudioDialog.cpp/h    # Format picker for export
     ├── SoundLibrary.cpp/h         # CSV index + lazy WAV cache (13,759 entries)
     └── SoundPickerComponent.cpp/h # Searchable list UI for the edit popup
 ```
@@ -401,6 +419,12 @@ loaded".
 - Voice gain formula → `handleStartEvent()`
 - Pitch mapping → `voice.pitchRate` formula in `handleStartEvent()`
 - Pan law → `voice.leftGain` / `voice.rightGain` in `handleStartEvent()`
+
+### Export
+**`SceneAudioExporter.cpp`**
+- Offline step size → `kChunkSamples` (smaller = finer event timing, slower bounce)
+- Maximum length → `kMaxDurationSec`
+- New lossy/lossless codec → extend `SceneAudioExporter::Format`, `pickFormat()`, and the dialog combo in `ExportAudioDialog.cpp`
 
 ### Sound Library
 **`SoundLibrary.cpp/h`**

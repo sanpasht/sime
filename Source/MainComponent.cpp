@@ -4,6 +4,7 @@
 
 #include "MainComponent.h"
 #include "SceneFile.h"
+#include "ExportAudioDialog.h"
 // #include "MathUtils.h"
 // #include "BlockEntry.h"
 
@@ -104,17 +105,11 @@ MainComponent::MainComponent()
     };
     syncComboToActive();
 
-    // ── File toolbar ────────────────────────────────────────────────────────
-    for (auto* btn : { &newBtn, &openBtn, &saveBtn, &saveAsBtn })
-    {
-        addAndMakeVisible(*btn);
-        btn->setColour(juce::TextButton::buttonColourId,  juce::Colour(0xff1a1a2e));
-        btn->setColour(juce::TextButton::textColourOffId,  juce::Colour(0xffccccdd));
-    }
-    newBtn  .onClick = [this] { newScene();  };
-    openBtn .onClick = [this] { openScene(); };
-    saveBtn .onClick = [this] { saveScene(); };
-    saveAsBtn.onClick = [this] { currentFilePath_.clear(); saveScene(); };
+    // ── File menu ───────────────────────────────────────────────────────────
+    addAndMakeVisible(fileMenuBtn_);
+    fileMenuBtn_.setColour(juce::TextButton::buttonColourId,  juce::Colour(0xff1a1a2e));
+    fileMenuBtn_.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffccccdd));
+    fileMenuBtn_.onClick = [this] { showFileMenu(); };
 
     // ── Wire edit popup ───────────────────────────────────────────────────────
     view.onRequestBlockEdit = [this](int serial, BlockType type,
@@ -198,10 +193,7 @@ void MainComponent::dismissStartupMenu()
     transportBar   .setVisible(true);
     blockTypeCombo .setVisible(true);
     typePill_      .setVisible(true);
-    newBtn         .setVisible(true);
-    openBtn        .setVisible(true);
-    saveBtn        .setVisible(true);
-    saveAsBtn      .setVisible(true);
+    fileMenuBtn_.setVisible(true);
 
     resized();
 }
@@ -306,6 +298,111 @@ void MainComponent::timerCallback()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// File menu + export
+// ─────────────────────────────────────────────────────────────────────────────
+
+void MainComponent::showFileMenu()
+{
+    juce::PopupMenu m;
+    m.addItem(1, "New Scene");
+    m.addItem(2, "Open Scene…");
+    m.addSeparator();
+    m.addItem(3, "Save");
+    m.addItem(4, "Save As…");
+    m.addSeparator();
+    m.addItem(5, "Export Audio…");
+
+    m.showMenuAsync(
+        juce::PopupMenu::Options().withTargetComponent(&fileMenuBtn_),
+        [this](int result) { handleFileMenu(result); });
+}
+
+void MainComponent::handleFileMenu(int result)
+{
+    if (result == 0)
+        return;
+
+    if (result == 1)
+        newScene();
+    else if (result == 2)
+        openScene();
+    else if (result == 3)
+        saveScene();
+    else if (result == 4)
+    {
+        currentFilePath_.clear();
+        saveScene();
+    }
+    else if (result == 5)
+        showExportAudioDialog();
+}
+
+void MainComponent::showExportAudioDialog()
+{
+    auto* panel = new ExportAudioDialog();
+    panel->onExportChosen = [this](SceneAudioExporter::Format fmt)
+    {
+        juce::MessageManager::callAsync([this, fmt]()
+        {
+            launchExportSaveChooser(fmt);
+        });
+    };
+
+    juce::DialogWindow::LaunchOptions opt;
+    opt.content.setOwned(panel);
+    opt.dialogTitle = "Export Audio";
+    opt.dialogBackgroundColour = juce::Colour(0xff2a2a2a);
+    opt.escapeKeyTriggersCloseButton = true;
+    opt.useNativeTitleBar = false;
+    opt.resizable = false;
+
+    if (auto* w = opt.launchAsync())
+        w->centreWithSize(panel->getWidth() + 24, panel->getHeight() + 40);
+}
+
+void MainComponent::launchExportSaveChooser(SceneAudioExporter::Format format)
+{
+    const juce::String wildcard = SceneAudioExporter::formatWildcard(format);
+    const juce::String ext = juce::String(SceneAudioExporter::formatFileSuffix(format)).substring(1);
+    const juce::String defaultName = juce::String("SIME-export.") + ext;
+
+    fileChooser_ = std::make_unique<juce::FileChooser>(
+        "Export Audio As",
+        juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
+            .getChildFile(defaultName),
+        wildcard);
+
+    fileChooser_->launchAsync(
+        juce::FileBrowserComponent::saveMode
+            | juce::FileBrowserComponent::canSelectFiles
+            | juce::FileBrowserComponent::warnAboutOverwriting,
+        [this, format, ext](const juce::FileChooser& fc)
+        {
+            juce::File result = fc.getResult();
+            if (result == juce::File{})
+                return;
+
+            result = result.withFileExtension(ext);
+
+            juce::String err;
+            if (view.exportSceneAudioToFile(result, format, err))
+            {
+                juce::AlertWindow::showMessageBoxAsync(
+                    juce::MessageBoxIconType::InfoIcon,
+                    "Export complete",
+                    "Audio saved to:\n" + result.getFullPathName());
+            }
+            else
+            {
+                juce::AlertWindow::showMessageBoxAsync(
+                    juce::MessageBoxIconType::WarningIcon,
+                    "Export failed",
+                    err.isNotEmpty() ? err : juce::String("Unknown error."));
+            }
+        });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 void MainComponent::paint(juce::Graphics& g)
 {
@@ -339,13 +436,9 @@ void MainComponent::resized()
     typePill_     .setBounds(tx, ty, 160, 26);  tx += 160 + gap;
     blockTypeCombo.setBounds(tx, ty, 200, 26);
 
-    // File toolbar — right side of toolbar row
-    const int fbtnW = 64;
-    int fx = toolbarArea.getRight() - 8 - (4 * (fbtnW + gap));
-    saveAsBtn.setBounds(fx + 3 * (fbtnW + gap), ty, fbtnW, 26);
-    saveBtn  .setBounds(fx + 2 * (fbtnW + gap), ty, fbtnW, 26);
-    openBtn  .setBounds(fx + 1 * (fbtnW + gap), ty, fbtnW, 26);
-    newBtn   .setBounds(fx,                      ty, fbtnW, 26);
+    // File menu — right side of toolbar row
+    const int fbtnW = 56;
+    fileMenuBtn_.setBounds(toolbarArea.getRight() - 8 - fbtnW, ty, fbtnW, 26);
 
     // 3D viewport — whatever remains
     view.setBounds(area);

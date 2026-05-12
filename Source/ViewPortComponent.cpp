@@ -1701,3 +1701,19 @@ void ViewPortComponent::applySidebarBlockInfo(
         }
     }
 }
+
+bool ViewPortComponent::exportSceneAudioToFile(const juce::File& outputFile,
+                                               SceneAudioExporter::Format format,
+                                               juce::String& errorOut)
+{
+    const auto blocks = getBlockListCopy();
+    const double sr   = audioEngine.getOutputSampleRate();
+
+    return SceneAudioExporter::bounceToFile(
+        blocks,
+        audioEngine.getSampleLibrary(),
+        sr,
+        outputFile,
+        format,
+        errorOut);
+}
