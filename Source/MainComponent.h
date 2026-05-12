@@ -7,6 +7,7 @@
 #include "BlockType.h"
 #include "MovementConfirmPopup.h"
 #include "StartupMenuComponent.h"
+#include "SceneAudioExporter.h"
 
 class MainComponent : public juce::Component, private juce::Timer
 {
@@ -57,14 +58,16 @@ private:
     void rebuildBlockTypeCombo();
     void syncComboToActive();
 
-    // ── File toolbar ─────────────────────────────────────────────────────────
-    juce::TextButton newBtn   { "New"  };
-    juce::TextButton openBtn  { "Open" };
-    juce::TextButton saveBtn  { "Save" };
-    juce::TextButton saveAsBtn{ "Save As" };
+    // ── File menu (DAW-style) ────────────────────────────────────────────────
+    juce::TextButton fileMenuBtn_ { "File" };
 
     juce::String currentFilePath_;
     std::unique_ptr<juce::FileChooser> fileChooser_;
+
+    void showFileMenu();
+    void handleFileMenu(int result);
+    void showExportAudioDialog();
+    void launchExportSaveChooser(SceneAudioExporter::Format format);
 
     static constexpr int kToolbarH = 34;
     void showMovementConfirmPopup(int serial, double duration,

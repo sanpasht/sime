@@ -117,6 +117,15 @@ public:
     void start();
     void stop();
 
+    /// Sample rate last set by prepareToPlay (matches live playback).
+    double getOutputSampleRate() const noexcept { return sampleRate_; }
+
+    /// Read-only sample map for offline export (do not call while mutating library).
+    const std::unordered_map<int, juce::AudioBuffer<float>>& getSampleLibrary() const noexcept
+    {
+        return sampleLibrary_;
+    }
+
 private:
     // ---- Sample library -------------------------------------------------
     std::unordered_map<int, juce::AudioBuffer<float>> sampleLibrary_;

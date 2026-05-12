@@ -18,6 +18,7 @@
 
 #include "BlockType.h"
 #include "SceneFile.h"
+#include "SceneAudioExporter.h"
 #include "SoundLibrary.h"
 #include <atomic>
 #include <vector>
@@ -214,6 +215,11 @@ public:
 
     /// Public access to the loaded sound index (used by BlockEditPopup).
     SoundLibrary& soundLibrary() noexcept { return library_; }
+
+    /// Offline mix of the full timeline to disk (call from the message thread).
+    bool exportSceneAudioToFile(const juce::File& outputFile,
+                                 SceneAudioExporter::Format format,
+                                 juce::String& errorOut);
 
 private:
     // ── Private helpers ───────────────────────────────────────────────────────
