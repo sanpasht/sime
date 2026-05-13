@@ -45,6 +45,7 @@ public:
     std::function<void()> onHeightChanged;  
 
     std::function<void(int serial)> onTimelineBlockClicked;
+    std::function<void(double)> onBpmChanged;
 
     
 
@@ -59,6 +60,15 @@ private:
     juce::Label timeLabel;
     TimelineComponent timeline;
     juce::Rectangle<int> miniProgressBounds_;
+
+
+    juce::Label bpmLabel_;
+    juce::TextEditor bpmInput_;
+    juce::TextButton tapTempoButton_ { "Tap" };
+
+    double bpm_ = 120.0;
+
+    std::vector<double> tapTimes_;
     
     // ── Internal display state ────────────────────────────────────────────────
     static constexpr int kExpandedHeight  = 300;

@@ -413,40 +413,42 @@ void MainComponent::paint(juce::Graphics& g)
 
 void MainComponent::resized()
 {
-    // Startup menu always fills the whole window
     startupMenu_.setBounds(getLocalBounds());
 
-    if (showingStartup_) return;  // don't lay out app components while startup is showing
+    if (showingStartup_)
+        return;
+
     auto area = getLocalBounds();
 
-    // Sidebar — full height, left side
     const int sidebarWidth = sidebar.isCollapsed() ? 50 : 220;
     sidebar.setBounds(area.removeFromLeft(sidebarWidth));
 
-    // Transport bar — bottom
-    transportBar.setBounds(area.removeFromBottom(transportBar.getPreferredHeight()));
+    // Transport bar fixed at bottom
+    auto transportArea = area.removeFromBottom(transportBar.getPreferredHeight());
+    transportBar.setBounds(transportArea);
 
-    // Block type toolbar — top of viewport area
+    // Toolbar stays at top
     auto toolbarArea = area.removeFromTop(kToolbarH);
+
     const int gap = 4;
     int ty = toolbarArea.getY() + (kToolbarH - 26) / 2;
 
-    // Active type pill (color swatch + name) and full grouped ComboBox
     int tx = toolbarArea.getX() + 8;
-    typePill_     .setBounds(tx, ty, 160, 26);  tx += 160 + gap;
+    typePill_.setBounds(tx, ty, 160, 26);
+    tx += 160 + gap;
+
     blockTypeCombo.setBounds(tx, ty, 200, 26);
 
-    // File menu — right side of toolbar row
     const int fbtnW = 56;
     fileMenuBtn_.setBounds(toolbarArea.getRight() - 8 - fbtnW, ty, fbtnW, 26);
 
-    // 3D viewport — whatever remains
+    // Viewport gets remaining area above transport bar
     view.setBounds(area);
 
+    transportBar.toFront(false);
+
     if (movementPopup)
-    {
-        movementPopup->toFront(false);  // Don't give it keyboard focus
-    }
+        movementPopup->toFront(false);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
