@@ -43,6 +43,10 @@ public:
     
     /// Callback when user drags to edit a block's timing
     std::function<void(int serial, double startTime, double duration)> onBlockEdited;
+
+    void setBpm(double newBpm);
+    void setSnapToGrid(bool shouldSnap);
+    void setSubdivision(int newSubdivision);
     
 private:
     struct BlockRegion
@@ -54,6 +58,36 @@ private:
         int trackIndex;  // Which row to draw in
         juce::String label;
     };
+    // =========================
+    // Rhythm / grid settings
+    // =========================
+    double bpm_ = 120.0;
+    int beatsPerBar_ = 4;
+    int subdivision_ = 16;     // 16 = sixteenth-note grid
+    bool snapToGrid_ = true;
+
+
+    // =========================
+    // Time / pixel conversion
+    // =========================
+    float pixelsPerSecond_ = 100.0f;
+    double viewStartTime_ = 0.0;
+
+
+    double secondsPerBeat() const;
+    double secondsPerSubdivision() const;
+
+    float timeToX(double timeSeconds) const;
+    double xToTime(float x) const;
+    
+    double snapTime(double timeSeconds) const;
+
+    // =========================
+    // Drawing helpers
+    // =========================
+    void drawBeatGrid(juce::Graphics& g);
+    void drawTimelineBlocks(juce::Graphics& g);
+    void drawPlayhead(juce::Graphics& g);
 
     bool isPanningTimeline_ = false;
     bool isUserPanning_ = false;    
@@ -81,8 +115,6 @@ private:
     
     std::vector<BlockRegion> regions_;
     
-    double viewStartTime_ = 0.0;      // Left edge of visible area
-    double pixelsPerSecond_ = 100.0;  // Zoom level
     double currentTime_ = 0.0;         // Playhead position
     double totalDuration_ = 10.0;      // Total timeline length
     
@@ -94,10 +126,7 @@ private:
     void paintTimeRuler(juce::Graphics& g, juce::Rectangle<int> area);
     void paintTracks(juce::Graphics& g, juce::Rectangle<int> area);
     void paintPlayhead(juce::Graphics& g, juce::Rectangle<int> area);
-    
-    int timeToX(double timeSec) const;
-    double xToTime(int x) const;
-
+    void paintBeatGrid(juce::Graphics& g, juce::Rectangle<int> tracksArea);
     
     juce::Colour getBlockColor(BlockType type, int soundId) const;
     

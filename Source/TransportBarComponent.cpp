@@ -3,48 +3,55 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 #include "TransportBarComponent.h"
-
 TransportBarComponent::TransportBarComponent()
 {
-    // ── Play/Pause button ─────────────────────────────────────────────────────
     addAndMakeVisible(playPauseButton);
     addAndMakeVisible(stopButton);
     addAndMakeVisible(timeLabel);
     addAndMakeVisible(timeline);
     addAndMakeVisible(collapseButton);
 
-    collapseButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff25283a));
-    collapseButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+    addAndMakeVisible(bpmLabel_);
+    addAndMakeVisible(bpmInput_);
+    addAndMakeVisible(tapTempoButton_);
 
-    collapseButton.setButtonText(isCollapsed_ ? "^" : "v");
-
-    playPauseButton.setColour(juce::TextButton::buttonColourId,  juce::Colour(0xff2a5298));
+    // ── Play/Pause button ─────────────────────────────────────────────────────
+    playPauseButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff2a5298));
     playPauseButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+
     playPauseButton.onClick = [this]
     {
         if (isPlaying_)
         {
-            if (onPause) onPause();
+            if (onPause)
+                onPause();
         }
         else
         {
-            if (onPlay) onPlay();
+            if (onPlay)
+                onPlay();
         }
     };
-    addAndMakeVisible(playPauseButton);
 
     // ── Stop button ───────────────────────────────────────────────────────────
-    stopButton.setColour(juce::TextButton::buttonColourId,  juce::Colour(0xff333344));
+    stopButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff333344));
     stopButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
-    stopButton.onClick = [this] { if (onStop) onStop(); };
 
+    stopButton.onClick = [this]
+    {
+        if (onStop)
+            onStop();
+    };
+
+    // ── Time label ────────────────────────────────────────────────────────────
     timeLabel.setFont(juce::Font(14.0f, juce::Font::bold));
     timeLabel.setColour(juce::Label::textColourId, juce::Colours::white);
     timeLabel.setJustificationType(juce::Justification::centred);
 
+    // ── Timeline callbacks ────────────────────────────────────────────────────
     timeline.onBlockEdited = [this](int serial, double start, double duration)
     {
-        if (onBlockEdited)  // forward to MainComponent
+        if (onBlockEdited)
             onBlockEdited(serial, start, duration);
     };
 
@@ -53,6 +60,11 @@ TransportBarComponent::TransportBarComponent()
         if (onTimelineBlockClicked)
             onTimelineBlockClicked(serial);
     };
+
+    // ── Collapse button ───────────────────────────────────────────────────────
+    collapseButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff25283a));
+    collapseButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+    collapseButton.setButtonText(isCollapsed_ ? "A" : "V");
 
     collapseButton.onClick = [this]
     {
@@ -67,6 +79,77 @@ TransportBarComponent::TransportBarComponent()
         resized();
         repaint();
     };
+
+    // ── BPM input ─────────────────────────────────────────────────────────────
+    bpmLabel_.setText("BPM", juce::dontSendNotification);
+    bpmLabel_.setColour(juce::Label::textColourId, juce::Colours::white);
+    bpmLabel_.setJustificationType(juce::Justification::centred);
+
+    bpmInput_.setText(juce::String(bpm_, 1), juce::dontSendNotification);
+    bpmInput_.setInputRestrictions(5, "0123456789.");
+    bpmInput_.setJustification(juce::Justification::centred);
+
+    auto applyBpm = [this](double newBpm)
+    {
+        bpm_ = juce::jlimit(40.0, 240.0, newBpm);
+
+        bpmInput_.setText(juce::String(bpm_, 1), juce::dontSendNotification);
+
+        timeline.setBpm(bpm_);
+        tapTimes_.clear();
+    };
+
+    bpmInput_.onReturnKey = [this, applyBpm]
+    {
+        applyBpm(bpmInput_.getText().getDoubleValue());
+    };
+
+    bpmInput_.onFocusLost = bpmInput_.onReturnKey;
+
+    // ── Tap tempo button ──────────────────────────────────────────────────────
+    tapTempoButton_.setButtonText("Tap");
+
+    tapTempoButton_.onClick = [this, applyBpm]
+    {
+        const double now = juce::Time::getMillisecondCounterHiRes() / 1000.0;
+
+        if (!tapTimes_.empty())
+        {
+            const double gap = now - tapTimes_.back();
+
+            if (gap > 2.0)
+                tapTimes_.clear();
+        }
+
+        tapTimes_.push_back(now);
+
+        if (tapTimes_.size() > 6)
+            tapTimes_.erase(tapTimes_.begin());
+
+        if (tapTimes_.size() < 2)
+            return;
+
+        double totalGap = 0.0;
+
+        for (size_t i = 1; i < tapTimes_.size(); ++i)
+            totalGap += tapTimes_[i] - tapTimes_[i - 1];
+
+        const double averageGap =
+            totalGap / static_cast<double>(tapTimes_.size() - 1);
+
+        if (averageGap <= 0.0)
+            return;
+
+        const double calculatedBpm = 60.0 / averageGap;
+
+        bpm_ = juce::jlimit(40.0, 240.0, calculatedBpm);
+        bpmInput_.setText(juce::String(bpm_, 1), juce::dontSendNotification);
+
+        timeline.setBpm(bpm_);
+    };
+
+    // Initial sync
+    timeline.setBpm(bpm_);
 
     // Poll at 30 Hz so the time display and progress bar feel live
     startTimerHz(30);
@@ -189,6 +272,12 @@ void TransportBarComponent::resized()
     // Reserve collapse button area FIRST
     auto rightButtonArea = controlStrip.removeFromRight(45);
     collapseButton.setBounds(rightButtonArea.reduced(6, 5));
+    // collapseButton.setBounds(controlStrip.reduced(5));
+
+    tapTempoButton_.setBounds(controlStrip.removeFromRight(55).reduced(4));
+    auto bpmBounds = controlStrip.removeFromRight(60);
+    bpmInput_.setBounds(bpmBounds.reduced(8, 10));
+    bpmLabel_.setBounds(controlStrip.removeFromRight(40).reduced(4));
 
     if (isCollapsed_)
     {

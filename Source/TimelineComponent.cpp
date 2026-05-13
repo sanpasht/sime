@@ -55,14 +55,69 @@ void TimelineComponent::paint(juce::Graphics& g)
     {
         juce::Graphics::ScopedSaveState state(g);
         g.reduceClipRegion(tracksArea);
+
+        paintBeatGrid(g, tracksArea);
+
+        // Draw blocks / regions on top of grid
         paintTracks(g, tracksArea);
     }
 
-    // Draw ruler AFTER tracks so it always stays visible
+
     paintTimeRuler(g, rulerArea);
 
-    // Draw playhead last
     paintPlayhead(g, getLocalBounds());
+}
+
+
+void TimelineComponent::paintBeatGrid(juce::Graphics& g,
+                                      juce::Rectangle<int> tracksArea)
+{
+    const double gridStep = secondsPerSubdivision();
+
+    if (gridStep <= 0.0 || pixelsPerSecond_ <= 0.0f)
+        return;
+
+    const double visibleStart = viewStartTime_;
+    const double visibleEnd =
+        viewStartTime_ + static_cast<double>(tracksArea.getWidth()) / pixelsPerSecond_;
+
+    const double firstGridTime =
+        std::floor(visibleStart / gridStep) * gridStep;
+
+    for (double t = firstGridTime; t <= visibleEnd; t += gridStep)
+    {
+        const float x = timeToX(t);
+
+        const int gridIndex =
+            static_cast<int>(std::round(t / gridStep));
+
+        if (gridIndex % 16 == 0)
+        {
+            // every 16th line - blue highlight
+            g.setColour(juce::Colour(0xff60a5fa).withAlpha(0.45f));
+        }
+        else if (gridIndex % 8 == 0)
+        {
+            // every 8th line - light gray
+            g.setColour(juce::Colours::lightgrey.withAlpha(0.28f));
+        }
+        else if (gridIndex % 4 == 0)
+        {
+            // every 4th line - dark gray
+            g.setColour(juce::Colours::darkgrey.withAlpha(0.20f));
+        }
+        else
+        {
+            // small subdivisions
+            g.setColour(juce::Colours::white.withAlpha(0.06f));
+        }
+
+        g.drawVerticalLine(
+            static_cast<int>(x),
+            static_cast<float>(tracksArea.getY()),
+            static_cast<float>(tracksArea.getBottom())
+        );
+    }
 }
 
 
@@ -125,10 +180,10 @@ void TimelineComponent::paintTracks(juce::Graphics& g, juce::Rectangle<int> area
     {
         int y = area.getY() + i * (kTrackHeight + kTrackGap) - (int)verticalScroll_;
         
-        juce::Colour trackBg = (i % 2 == 0) 
-            ? juce::Colour(0xff1e1e1e) 
-            : juce::Colour(0xff242424);
-        
+        juce::Colour trackBg = (i % 2 == 0)
+            ? juce::Colour(0xff1e1e1e).withAlpha(0.25f)
+            : juce::Colour(0xff242424).withAlpha(0.25f);
+
         g.setColour(trackBg);
         g.fillRect(area.getX(), y, area.getWidth(), kTrackHeight);
     }
@@ -149,7 +204,7 @@ void TimelineComponent::paintTracks(juce::Graphics& g, juce::Rectangle<int> area
         
         // Block color
         juce::Colour color = getBlockColor(region.type, 0);
-        g.setColour(color.withAlpha(0.8f));
+        g.setColour(color.withAlpha(0.9f));
         g.fillRoundedRectangle(blockRect.toFloat(), 3.0f);
         
         // Border
@@ -185,12 +240,12 @@ void TimelineComponent::paintPlayhead(juce::Graphics& g, juce::Rectangle<int> ar
     g.fillPath(triangle);
 }
 
-int TimelineComponent::timeToX(double time) const
+float TimelineComponent::timeToX(double timeSeconds) const
 {
-    return (int)((time - viewStartTime_) * pixelsPerSecond_);
+    return static_cast<float>((timeSeconds - viewStartTime_) * pixelsPerSecond_);
 }
 
-double TimelineComponent::xToTime(int x) const
+double TimelineComponent::xToTime(float x) const
 {
     return viewStartTime_ + (x / pixelsPerSecond_);
 }
@@ -249,8 +304,8 @@ void TimelineComponent::mouseDrag(const juce::MouseEvent& e)
     // 1) Drag / resize block rectangles
     if (selectedBlock_ != -1 && dragMode_ != DragMode::None)
     {
-        double currentMouseTime = xToTime(e.x);
-        double delta = currentMouseTime - dragStartTime_;
+        const double currentMouseTime = xToTime(static_cast<float>(e.x));
+        const double delta = currentMouseTime - dragStartTime_;
 
         for (auto& r : regions_)
         {
@@ -259,12 +314,20 @@ void TimelineComponent::mouseDrag(const juce::MouseEvent& e)
 
             if (dragMode_ == DragMode::Move)
             {
-                r.startTime = std::max(0.0, originalStart_ + delta);
+                double newStartTime = originalStart_ + delta;
+                newStartTime = snapTime(newStartTime);
+
+                r.startTime = std::max(0.0, newStartTime);
+                r.duration = originalDuration_;
             }
             else if (dragMode_ == DragMode::ResizeLeft)
             {
-                double originalEnd = originalStart_ + originalDuration_;
-                double newStart = std::max(0.0, originalStart_ + delta);
+                const double originalEnd = originalStart_ + originalDuration_;
+
+                double newStart = originalStart_ + delta;
+                newStart = snapTime(newStart);
+                newStart = std::max(0.0, newStart);
+
                 double newDuration = originalEnd - newStart;
 
                 if (newDuration >= 0.1)
@@ -275,7 +338,16 @@ void TimelineComponent::mouseDrag(const juce::MouseEvent& e)
             }
             else if (dragMode_ == DragMode::ResizeRight)
             {
-                r.duration = std::max(0.1, originalDuration_ + delta);
+                double newEnd = originalStart_ + originalDuration_ + delta;
+                newEnd = snapTime(newEnd);
+
+                double newDuration = newEnd - originalStart_;
+
+                if (newDuration >= 0.1)
+                {
+                    r.startTime = originalStart_;
+                    r.duration = newDuration;
+                }
             }
 
             if (onBlockEdited)
@@ -292,24 +364,23 @@ void TimelineComponent::mouseDrag(const juce::MouseEvent& e)
     if (isPanningTimeline_)
     {
         const int totalContentHeight =
-            (int)regions_.size() * (kTrackHeight + kTrackGap);
+            static_cast<int>(regions_.size()) * (kTrackHeight + kTrackGap);
 
         const int visibleHeight = getHeight() - kRulerHeight;
 
         const double maxScroll =
             std::max(0, totalContentHeight - visibleHeight);
 
-            
-        int dy = e.y - lastDragY_;
-        int dx = e.x - lastDragX_;
+        const int dx = e.x - lastDragX_;
+        const int dy = e.y - lastDragY_;
 
         viewStartTime_ = std::max(
             0.0,
-            viewStartTime_ - ((double)dx / pixelsPerSecond_)
+            viewStartTime_ - (static_cast<double>(dx) / pixelsPerSecond_)
         );
 
         verticalScroll_ = std::clamp(
-            verticalScroll_ - (double)dy,
+            verticalScroll_ - static_cast<double>(dy),
             0.0,
             maxScroll
         );
@@ -435,4 +506,32 @@ void TimelineComponent::setPlaying(bool playing)
     }
 }
 
+double TimelineComponent::secondsPerBeat() const
+{
+    return 60.0 / bpm_;
+}
 
+double TimelineComponent::secondsPerSubdivision() const
+{
+    return secondsPerBeat() * (4.0 / subdivision_);
+}
+
+
+double TimelineComponent::snapTime(double timeSeconds) const
+{
+    if (!snapToGrid_)
+        return timeSeconds;
+
+    const double grid = secondsPerSubdivision();
+
+    if (grid <= 0.0)
+        return timeSeconds;
+
+    return std::round(timeSeconds / grid) * grid;
+}
+
+void TimelineComponent::setBpm(double newBpm)
+{
+    bpm_ = juce::jlimit(40.0, 240.0, newBpm);
+    repaint();
+}
