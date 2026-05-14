@@ -1037,7 +1037,7 @@ void ViewPortComponent::paint(juce::Graphics& g)
         }
 
         // Direction buttons below the gizmo
-        const char* btnLabels[] = { "Front", "Back", "Left", "Right" };
+        const char* btnLabels[] = { "Front", "Back", "Right", "Left" };
         const juce::Colour btnHover(0xff445577);
         const juce::Colour btnNormal(0xcc1a1e2e);
 
