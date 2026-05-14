@@ -131,6 +131,10 @@ private:
     std::unordered_map<int, juce::AudioBuffer<float>> sampleLibrary_;
     juce::AudioFormatManager formatManager_;
 
+
+    //stereo panning helper
+    void applySpatialPosition(ActiveVoice& voice, float x, float y,float z);
+
     // ---- Active voices (audio-thread-owned) -----------------------------
     std::vector<ActiveVoice> activeVoices_;
 

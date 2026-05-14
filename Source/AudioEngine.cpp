@@ -377,21 +377,7 @@ void AudioEngine::handleStartEvent(const SequencerEvent& ev)
     voice.samplePositionF = 0.0f;
     voice.buffer          = &it->second;
 
-    // Z → proximity gain: inverse distance falloff
-    constexpr float refDist = 5.0f;
-    const float dist = std::abs(ev.blockZ);
-    voice.gain = juce::jlimit(0.0f, 1.0f, refDist / (refDist + dist));
-
-    // Y → pitch: each grid unit = one semitone
-    voice.pitchRate = juce::jlimit(0.25f, 4.0f,
-                                   std::pow(2.0f, ev.blockY / 12.0f));
-
-    // X → stereo pan: ±20 grid units maps to full left/right
-    voice.pan = juce::jlimit(-1.0f, 1.0f, ev.blockX / 20.0f);
-    const float angle = (voice.pan + 1.0f) * 0.25f
-                        * juce::MathConstants<float>::pi;
-    voice.leftGain  = voice.gain * std::cos(angle);
-    voice.rightGain = voice.gain * std::sin(angle);
+    applySpatialPosition(voice, ev.blockX, ev.blockY, ev.blockZ);
 
     activeVoices_.push_back(voice);
 }
@@ -407,4 +393,35 @@ void AudioEngine::handleStopEvent(const SequencerEvent& ev)
         if (voice.blockSerial == ev.blockSerial)
             voice.stopping = true;
     }
+}
+
+void AudioEngine::applySpatialPosition(ActiveVoice& voice, float x, float y, float z)
+{
+    // XZ plane distance from listener at origin
+    const float distance = std::sqrt(x * x + z * z);
+
+    // Volume from Euclidean distance
+    constexpr float refDist = 5.0f;
+    voice.gain = juce::jlimit(0.0f, 1.0f, refDist / (refDist + distance));
+
+    // Y controls pitch only
+    voice.pitchRate = juce::jlimit(0.25f, 4.0f,
+        std::pow(2.0f, y / 12.0f));
+
+    // Direction in XZ plane
+    const float angle = std::atan2(x, z);
+
+    // Stereo pan from direction
+    const float pan = std::sin(angle);
+    voice.pan = juce::jlimit(-1.0f, 1.0f, pan);
+
+    // Front/back effect: rear sounds slightly reduced
+    const float frontBack = std::cos(angle);
+    const float rearAttenuation = juce::jmap(frontBack, -1.0f, 1.0f, 0.65f, 1.0f);
+
+    // Equal-power stereo panning
+    const float panAngle = (voice.pan + 1.0f) * 0.25f * juce::MathConstants<float>::pi;
+
+    voice.leftGain  = voice.gain * rearAttenuation * std::cos(panAngle);
+    voice.rightGain = voice.gain * rearAttenuation * std::sin(panAngle);
 }
