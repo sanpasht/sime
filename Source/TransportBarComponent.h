@@ -54,8 +54,8 @@ private:
     void updateButtonStates();
 
     // ── Buttons ───────────────────────────────────────────────────────────────
-    juce::TextButton playPauseButton { "Play" };
-    juce::TextButton stopButton      { "STOP" };
+    juce::TextButton playPauseButton;
+    juce::TextButton stopButton;
     juce::TextButton collapseButton { "⌄" };
     juce::Label timeLabel;
     TimelineComponent timeline;

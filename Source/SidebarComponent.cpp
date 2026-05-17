@@ -205,7 +205,7 @@ void SidebarComponent::paint(juce::Graphics& g)
             g.drawLine(b.getX(), b.getBottom(), b.getRight(), b.getBottom(), 1.0f);
 
         g.setColour(active ? juce::Colours::white : juce::Colour(0xffb8c7e6));
-        g.setFont(13.0f);
+        g.setFont(juce::Font("Public Sans", 13.0f, juce::Font::plain));
         g.drawText(label, btn.getBounds(), juce::Justification::centred);
     };
 
@@ -238,7 +238,7 @@ void SidebarComponent::paint(juce::Graphics& g)
 
         const int itemCount = (int)snapshot.size();
 
-        g.setFont(juce::Font(16.0f).boldened());
+        g.setFont(juce::Font("Public Sans", 16.0f, juce::Font::bold));
         g.setColour(juce::Colour(0xff88aacc));
         g.drawText("Blocks (" + juce::String(itemCount) + ")",
                    12, contentTopY,
@@ -247,7 +247,7 @@ void SidebarComponent::paint(juce::Graphics& g)
 
         if (itemCount == 0)
         {
-            g.setFont(13.0f);
+            g.setFont(juce::Font("Public Sans", 13.0f, juce::Font::plain));
             g.setColour(text.withAlpha(0.7f));
             g.drawText("No blocks yet",
                        12, contentTopY + 40,
@@ -266,7 +266,7 @@ void SidebarComponent::paint(juce::Graphics& g)
         g.saveState();
         g.reduceClipRegion(0, listY, getWidth(), visibleContentH);
 
-        g.setFont(11.0f);
+        g.setFont(juce::Font("Public Sans", 11.0f, juce::Font::plain));
 
         for (int i = 0; i < itemCount; ++i)
         {
@@ -312,7 +312,7 @@ void SidebarComponent::paint(juce::Graphics& g)
 
         if (!selectedBlock_)
         {
-            g.setFont(15.0f);
+            g.setFont(juce::Font("Public Sans", 15.0f, juce::Font::plain));
             g.setColour(text);
             g.drawText("Select a block",
                        margin, contentTopY + 20,
@@ -321,7 +321,7 @@ void SidebarComponent::paint(juce::Graphics& g)
             return;
         }
 
-        g.setFont(juce::Font(16.0f).boldened());
+        g.setFont(juce::Font("Public Sans", 16.0f, juce::Font::bold));
         g.setColour(juce::Colour(0xff88aacc));
         g.drawText("Block " + juce::String(selectedBlock_->serial),
                    margin, contentTopY,
@@ -330,7 +330,7 @@ void SidebarComponent::paint(juce::Graphics& g)
 
         int y = 86;
 
-        g.setFont(13.0f);
+        g.setFont(juce::Font("Public Sans", 13.0f, juce::Font::plain));
         g.setColour(text);
 
         g.drawText("X:", margin, y, labelW, editorH, juce::Justification::centredLeft);
@@ -400,7 +400,7 @@ void SidebarComponent::movementGraph(juce::Graphics& g,
     if (block.recordedMovement.size() < 2)
     {
         g.setColour(juce::Colours::white.withAlpha(0.55f));
-        g.setFont(12.0f);
+        g.setFont(juce::Font("Public Sans", 12.0f, juce::Font::plain));
         g.drawText("No recorded movement",
                    graphArea,
                    juce::Justification::centred);
@@ -487,7 +487,7 @@ void SidebarComponent::movementGraph(juce::Graphics& g,
         if (keys[i].position.y > 0)
         {
             g.setColour(juce::Colours::white.withAlpha(0.55f));
-            g.setFont(9.0f);
+            g.setFont(juce::Font("Public Sans", 9.0f, juce::Font::plain));
             g.drawText(juce::String(keys[i].position.y),
                        (int)point.x - 8,
                        (int)point.y - 16,
@@ -502,7 +502,7 @@ void SidebarComponent::movementGraph(juce::Graphics& g,
     auto endPoint = toScreen(keys.back().position);
 
     g.setColour(juce::Colours::white.withAlpha(0.8f));
-    g.setFont(9.0f);
+    g.setFont(juce::Font("Public Sans", 9.0f, juce::Font::plain));
 
     g.drawText("START",
                (int)startPoint.x - 20,
@@ -520,7 +520,7 @@ void SidebarComponent::movementGraph(juce::Graphics& g,
 
     // Small coordinate range
     g.setColour(juce::Colours::grey);
-    g.setFont(9.0f);
+    g.setFont(juce::Font("Public Sans", 9.0f, juce::Font::plain));
 
     g.drawText("X " + juce::String(minX) + "→" + juce::String(maxX)
              + "   Z " + juce::String(minZ) + "→" + juce::String(maxZ),

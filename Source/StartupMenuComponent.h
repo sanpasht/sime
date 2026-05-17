@@ -2,13 +2,14 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // StartupMenuComponent.h
 // Full-screen startup overlay shown when the app launches.
-// Matches the dark-blue card design with voxel S logo.
+// Animated coloured squares drift in the background outside the card.
 // ─────────────────────────────────────────────────────────────────────────────
 
 #include <JuceHeader.h>
 #include <vector>
 
-class StartupMenuComponent : public juce::Component
+class StartupMenuComponent : public juce::Component,
+                              private juce::Timer
 {
 public:
     StartupMenuComponent();
@@ -19,7 +20,6 @@ public:
     std::function<void()>                    onContinue;
     std::function<void(const juce::String&)> onRecentFile;
 
-    /// Scans AppData/SIME for .sime files and populates the Recent list.
     void refreshRecentFiles();
 
     // ── juce::Component ──────────────────────────────────────────────────────
@@ -30,33 +30,54 @@ public:
     void mouseExit (const juce::MouseEvent&) override;
 
 private:
+    // ── Animated background squares ───────────────────────────────────────────
+    struct AnimSquare
+    {
+        float x        = 0.f;
+        float y        = 0.f;
+        float maxSize  = 40.f;
+        float t        = 0.f;    ///< lifecycle 0 -> 1
+        float speed    = 0.28f;
+        float rotation = 0.f;
+        juce::Colour colour;
+        bool  active   = false;
+    };
+
+    static constexpr int kMaxSquares = 12;
+    AnimSquare squares_[kMaxSquares];
+    juce::Random rng_;
+
+    void timerCallback() override;
+    void initSquare (AnimSquare& sq);
+    void drawSquares(juce::Graphics& g) const;
+
     // ── State ─────────────────────────────────────────────────────────────────
     bool continueAvailable_ = false;
-    int  hoveredBtn_        = -1;   // 0=New, 1=Open, 2=Continue, 10+N=Recent row N
+    int  hoveredBtn_        = -1;
 
     struct RecentFile
     {
-        juce::String name;      ///< filename without path
-        juce::String age;       ///< "today", "yesterday", "3 days ago" …
+        juce::String name;
+        juce::String age;
         juce::String fullPath;
         juce::Colour dot;
     };
     std::vector<RecentFile> recent_;
 
     // ── Layout constants ──────────────────────────────────────────────────────
-    static constexpr float kCardW     = 360.f;
-    static constexpr float kBtnH      = 52.f;
-    static constexpr float kBtnGap    = 10.f;
+    static constexpr float kCardW      = 360.f;
+    static constexpr float kBtnH       = 52.f;
+    static constexpr float kBtnGap     = 10.f;
     static constexpr float kRecentRowH = 44.f;
 
     // ── Layout helpers ────────────────────────────────────────────────────────
-    float cardLeft()    const { return (getWidth()  - kCardW) / 2.f; }
-    float cardTop()     const;
+    float cardLeft() const { return (getWidth()  - kCardW) / 2.f; }
+    float cardTop()  const;
 
-    juce::Rectangle<float> newBtnRect()       const;
-    juce::Rectangle<float> openBtnRect()      const;
-    juce::Rectangle<float> continueBtnRect()  const;
-    juce::Rectangle<float> helpLinkRect()     const;
+    juce::Rectangle<float> newBtnRect()      const;
+    juce::Rectangle<float> openBtnRect()     const;
+    juce::Rectangle<float> continueBtnRect() const;
+    juce::Rectangle<float> helpLinkRect()    const;
     juce::Rectangle<float> recentRowRect(int i) const;
 
     // ── Draw helpers ──────────────────────────────────────────────────────────
@@ -65,6 +86,8 @@ private:
     void drawActionBtn(juce::Graphics& g, juce::Rectangle<float> r,
                        const juce::String& icon, const juce::String& label,
                        bool primary, bool enabled, bool hovered) const;
+    void drawFileIcon (juce::Graphics& g, float cx, float cy,
+                       float alpha) const;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(StartupMenuComponent)
 };

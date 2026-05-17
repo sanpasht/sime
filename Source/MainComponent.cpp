@@ -10,13 +10,38 @@
 
 MainComponent::MainComponent()
 {
-    // ── Startup menu — DISABLED, jump straight to main UI ────────────────────
-    showingStartup_ = false;
-    startupMenu_.setVisible(false);
+    // ── Startup menu ─────────────────────────────────────────────────────────
+    showingStartup_ = true;
+    addAndMakeVisible(startupMenu_);
 
-    addAndMakeVisible(view);
-    addAndMakeVisible(sidebar);
-    addAndMakeVisible(transportBar);
+    startupMenu_.onNewScene = [this]
+    {
+        dismissStartupMenu();
+        newScene();
+    };
+    startupMenu_.onOpenScene = [this]
+    {
+        dismissStartupMenu();
+        openScene();
+    };
+    startupMenu_.onContinue = [this]
+    {
+        auto autosave = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
+                            .getChildFile("SIME")
+                            .getChildFile("autosave.sime");
+        dismissStartupMenu();
+        loadSceneFromFile(autosave.getFullPathName());
+    };
+    startupMenu_.onRecentFile = [this](const juce::String& path)
+    {
+        dismissStartupMenu();
+        loadSceneFromFile(path);
+    };
+
+    // Main UI starts hidden — shown when startup menu is dismissed
+    addChildComponent(view);
+    addChildComponent(sidebar);
+    addChildComponent(transportBar);
 
     // ── Wire sidebar collapse ─────────────────────────────────────────────────
     view.setSidebarComponent(&sidebar);
@@ -87,8 +112,8 @@ MainComponent::MainComponent()
     };
 
     // ── Block type toolbar ────────────────────────────────────────────────────
-    addAndMakeVisible(typePill_);
-    addAndMakeVisible(blockTypeCombo);
+    addChildComponent(typePill_);
+    addChildComponent(blockTypeCombo);
 
     blockTypeCombo.setColour(juce::ComboBox::backgroundColourId,    juce::Colour(0xff181a24));
     blockTypeCombo.setColour(juce::ComboBox::textColourId,           juce::Colour(0xffe2e6f2));
@@ -106,7 +131,7 @@ MainComponent::MainComponent()
     syncComboToActive();
 
     // ── File menu ───────────────────────────────────────────────────────────
-    addAndMakeVisible(fileMenuBtn_);
+    addChildComponent(fileMenuBtn_);
     fileMenuBtn_.setColour(juce::TextButton::buttonColourId,  juce::Colour(0xff1a1a2e));
     fileMenuBtn_.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffccccdd));
     fileMenuBtn_.onClick = [this] { showFileMenu(); };

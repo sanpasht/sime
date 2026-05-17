@@ -16,6 +16,7 @@ TransportBarComponent::TransportBarComponent()
     addAndMakeVisible(tapTempoButton_);
 
     // ── Play/Pause button ─────────────────────────────────────────────────────
+    playPauseButton.setButtonText(juce::CharPointer_UTF8("\xe2\x96\xb6"));  // ▶
     playPauseButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff2a5298));
     playPauseButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
 
@@ -34,6 +35,7 @@ TransportBarComponent::TransportBarComponent()
     };
 
     // ── Stop button ───────────────────────────────────────────────────────────
+    stopButton.setButtonText(juce::CharPointer_UTF8("\xe2\x96\xa0"));  // ■
     stopButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff333344));
     stopButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
 
@@ -64,13 +66,13 @@ TransportBarComponent::TransportBarComponent()
     // ── Collapse button ───────────────────────────────────────────────────────
     collapseButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff25283a));
     collapseButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
-    collapseButton.setButtonText(isCollapsed_ ? "A" : "V");
+    collapseButton.setButtonText(isCollapsed_ ? "^" : "v");
 
     collapseButton.onClick = [this]
     {
         isCollapsed_ = !isCollapsed_;
 
-        collapseButton.setButtonText(isCollapsed_ ? "A" : "V");
+        collapseButton.setButtonText(isCollapsed_ ? "^" : "v");
         timeline.setVisible(!isCollapsed_);
 
         if (onHeightChanged)
@@ -197,13 +199,13 @@ void TransportBarComponent::updateButtonStates()
 {
     if (isPlaying_)
     {
-        playPauseButton.setButtonText("Pause");
+        playPauseButton.setButtonText(juce::CharPointer_UTF8("\xe2\x8f\xb8"));  // ⏸
         playPauseButton.setColour(juce::TextButton::buttonColourId,
                                   juce::Colour(0xff225588));
     }
     else
     {
-        playPauseButton.setButtonText("Play");
+        playPauseButton.setButtonText(juce::CharPointer_UTF8("\xe2\x96\xb6"));  // ▶
         playPauseButton.setColour(juce::TextButton::buttonColourId,
                                   juce::Colour(0xff2a5298));
     }
