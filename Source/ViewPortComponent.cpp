@@ -124,6 +124,7 @@ ViewPortComponent::ViewPortComponent()
             << contentRoot_.getFullPathName()
             << "  (expected CSV/sound_library.csv + Sounds/ — picker will be empty)");
     }
+    // refreshWorkspaceAudioPanel();
 }
 
 ViewPortComponent::~ViewPortComponent()
@@ -144,7 +145,20 @@ void ViewPortComponent::loadScene(std::vector<BlockEntry> newBlocks)
 
         const bool isAbsolute = juce::File::isAbsolutePath(pathStr);
 
-        if (!isAbsolute)
+        if (pathStr.startsWith("workspaceAudios"))
+        {
+            auto wav =
+                contentRoot_
+                    .getChildFile("Source")
+                    .getChildFile(pathStr);
+
+            if (wav.existsAsFile())
+            {
+                if (!audioEngine.hasSample(b.soundId))
+                    audioEngine.loadSample(b.soundId, wav);
+            }
+        }
+        else if (!isAbsolute)
         {
             int idx = library_.findByRelativePath(pathStr);
             if (idx >= 0)
@@ -233,7 +247,7 @@ void ViewPortComponent::renderOpenGL()
         {
             if (sidebar != nullptr)
             {
-                sidebar->setBlocks({});
+                sidebar->setAudioList({});
                 sidebar->resetSpatialUi();
                 sidebar->clearSelectedBlock();
             }
@@ -399,19 +413,13 @@ void ViewPortComponent::renderOpenGL()
         selectedSerial = -1;
         multiSelection_.clear();
         renderer.meshDirty = true;
+        
+        refreshWorkspaceAudioPanel();
 
-        std::vector<SidebarComponent::Block> uiBlocks;
-        uiBlocks.reserve(blockList.size());
-        for (const auto& e : blockList)
-            uiBlocks.push_back({ e.serial, e.pos, BlockEntry::displayName(e, blockList) });
+        if (onBlockListChanged)
+            onBlockListChanged();
+   
 
-        juce::MessageManager::callAsync([this, uiBlocks]()
-        {
-            if (sidebar != nullptr)
-                sidebar->setBlocks(uiBlocks);
-            if (onBlockListChanged)
-                onBlockListChanged();
-        });
     }
 
     // ── Hover raycast ─────────────────────────────────────────────────────────
@@ -483,8 +491,26 @@ void ViewPortComponent::renderOpenGL()
                         b.durationSec = edit.duration;
                     if (!edit.customFile.empty())
                     {
-                        b.soundId      = edit.soundId;
-                        b.customFilePath = edit.customFile;
+                        juce::File selectedFile(edit.customFile);
+
+                        if (selectedFile.existsAsFile())
+                        {
+                            juce::File copiedFile = copyAudioToWorkspace(selectedFile);
+
+                            if (copiedFile.existsAsFile())
+                            {
+                                b.soundId = edit.soundId;
+
+                                // Save portable relative path, not full C:\... path
+                                b.customFilePath =
+                                    ("workspaceAudios/" + copiedFile.getFileName()).toStdString();
+
+                                if (!audioEngine.hasSample(b.soundId))
+                                    audioEngine.loadSample(b.soundId, copiedFile);
+
+                                refreshWorkspaceAudioPanel();
+                            }
+                        }
                     }
                     else
                     {
@@ -1339,19 +1365,10 @@ void ViewPortComponent::renderOpenGL()
                 undoStack_.erase(undoStack_.begin());
 
             renderer.meshDirty = true;
-            std::vector<SidebarComponent::Block> uiBlocks;
-            uiBlocks.reserve(blockList.size());
+            refreshWorkspaceAudioPanel();
 
-            for (const auto& e : blockList)
-                uiBlocks.push_back({ e.serial, e.pos, BlockEntry::displayName(e, blockList) });
-
-            juce::MessageManager::callAsync([this, uiBlocks]()
-            {
-                if(sidebar != nullptr)
-                    sidebar->setBlocks(uiBlocks);
-                if (onBlockListChanged)
-                    onBlockListChanged();
-            });
+            if (onBlockListChanged)
+                onBlockListChanged();   
         }
     }
 
@@ -2186,19 +2203,12 @@ void ViewPortComponent::doRaycast(float mx, float my)
 
 void ViewPortComponent::pushBlockListToUi(int removedSerial)
 {
-    std::vector<SidebarComponent::Block> uiBlocks;
-    uiBlocks.reserve(blockList.size());
-    for (const auto& e : blockList)
-        uiBlocks.push_back({ e.serial, e.pos, BlockEntry::displayName(e, blockList) });
+    juce::ignoreUnused(removedSerial);
 
-    juce::MessageManager::callAsync([this, uiBlocks, removedSerial]()
+    juce::MessageManager::callAsync([this]()
     {
-        if (sidebar != nullptr)
-        {
-            sidebar->setBlocks(uiBlocks);
-            if (removedSerial >= 0)
-                sidebar->clearSelectedBlockIfSerial(removedSerial);
-        }
+        refreshWorkspaceAudioPanel();
+
         if (onBlockListChanged)
             onBlockListChanged();
     });
@@ -3623,4 +3633,106 @@ void ViewPortComponent::beginDistancePick(int anchorSerial)
 {
     distancePickAnchorSerial_.store(anchorSerial);
     distancePickActive_.store(anchorSerial >= 0);
+}
+
+juce::File ViewPortComponent::copyAudioToWorkspace(const juce::File& sourceFile)
+{
+    auto workspaceDir = getWorkspaceAudioDir();
+
+    workspaceDir.createDirectory();
+
+    auto targetFile = workspaceDir.getChildFile(sourceFile.getFileName());
+
+    int counter = 1;
+
+    while (targetFile.existsAsFile())
+    {
+        targetFile = workspaceDir.getChildFile(
+            sourceFile.getFileNameWithoutExtension()
+            + "_"
+            + juce::String(counter)
+            + sourceFile.getFileExtension()
+        );
+
+        ++counter;
+    }
+
+    if (!sourceFile.copyFileTo(targetFile))
+        return {};
+
+    return targetFile;
+}
+
+
+juce::File ViewPortComponent::getWorkspaceAudioDir() const
+{
+    return contentRoot_
+        .getChildFile("Source")
+        .getChildFile("workspaceAudios");
+}
+
+
+std::vector<SidebarComponent::AudioItem> ViewPortComponent::scanWorkspaceAudios() const
+{
+    std::vector<SidebarComponent::AudioItem> audioItems;
+
+    auto dir = getWorkspaceAudioDir();
+
+    if (!dir.isDirectory())
+        dir.createDirectory();
+
+    juce::Array<juce::File> files;
+
+    dir.findChildFiles(files,
+                       juce::File::findFiles,
+                       false,
+                       "*.wav;*.mp3;*.aiff;*.flac");
+
+    for (const auto& file : files)
+    {
+        SidebarComponent::AudioItem item;
+        item.fileName = file.getFileName();
+        item.relativePath = "workspaceAudios/" + file.getFileName();
+        item.fullPath = file.getFullPathName();
+
+        audioItems.push_back(item);
+    }
+
+    return audioItems;
+}
+
+
+void ViewPortComponent::refreshWorkspaceAudioPanel()
+{
+    std::vector<SidebarComponent::AudioItem> items;
+
+    auto dir = getWorkspaceAudioDir();
+
+    if (!dir.exists())
+        dir.createDirectory();
+
+    juce::Array<juce::File> files;
+
+    dir.findChildFiles(
+        files,
+        juce::File::findFiles,
+        false,
+        "*.wav;*.mp3;*.aiff;*.flac"
+    );
+
+    for (const auto& file : files)
+    {
+        SidebarComponent::AudioItem item;
+        item.fileName = file.getFileName();
+        item.relativePath = "workspaceAudios/" + file.getFileName();
+        item.fullPath = file.getFullPathName();
+
+        items.push_back(item);
+    }
+
+    juce::MessageManager::callAsync([this, items]()
+    {
+        if (sidebar != nullptr)
+            sidebar->setAudioList(items);
+    });
 }

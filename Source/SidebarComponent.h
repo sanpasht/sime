@@ -11,14 +11,21 @@
 class MuteSchedulePopup;
 class KeyframeEditorPopup;
 
+struct AudioItem
+{
+    juce::String fileName;
+    juce::String relativePath;
+    juce::String fullPath;
+};
+
 class SidebarComponent : public juce::Component
 {
 public:
-    struct Block
+    struct AudioItem
     {
-        int          serial;
-        Vec3i        pos;
-        juce::String displayName;   ///< e.g. "Violin 1" — empty falls back to "Block N"
+        juce::String fileName;
+        juce::String relativePath;
+        juce::String fullPath;
     };
 
     SidebarComponent();
@@ -28,7 +35,7 @@ public:
     // Initial state: sidebar is expanded, so show the close (✕) symbol.
     // Text is updated dynamically in onClick via CharPointer_UTF8.
     juce::TextButton toggleButton { juce::CharPointer_UTF8("\xe2\x9c\x95") };
-    juce::TextButton blockListButton { "Blocks" };
+    juce::TextButton AudioListButton { "Blocks" };
     juce::TextButton infoButton { "Info" };
     void resized() override;
     void mouseWheelMove(const juce::MouseEvent&,
@@ -36,7 +43,7 @@ public:
     std::function<void(bool)> onCollapsedChanged;
 
     void setCollapsed(bool shouldCollapse);
-    void setBlocks(const std::vector<Block>& newBlocks);
+    void setAudioList(const std::vector<AudioItem>& newAudioFiles);
     bool isCollapsed() const { return collapsed; }
     bool isBlockPanelOpen() const { return blockPanelOpen; }
     bool isInfoPanelOpen() const { return infoPanelOpen; }
@@ -112,11 +119,11 @@ private:
     bool blockPanelOpen = true;
     bool infoPanelOpen = false;
 
-    std::vector<Block> blockListUI;
-    juce::CriticalSection blockListMutex;
+    std::vector<AudioItem> AudioListUI;
+    juce::CriticalSection AudioListMutex;
 
-    bool blockListOpen = true;
-    int blockListScroll = 0;
+    bool AudioListOpen = true;
+    int AudioListScroll = 0;
 
     /// Scroll offset for the Info panel content (rows / graphs between the
     /// tab header and the bottom Apply / Reset buttons).

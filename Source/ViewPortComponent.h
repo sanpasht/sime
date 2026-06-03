@@ -319,6 +319,10 @@ public:
                || blockTypeVisible_[idx].load();
     }
 
+    std::vector<SidebarComponent::AudioItem> scanWorkspaceAudios() const;
+    void refreshWorkspaceAudioPanel();
+    juce::File getWorkspaceAudioDir() const;
+
     // ── Per-type indefinite mute (toolbar Mute menu) ───────────────────────
     void setBlockTypeMuted(BlockType t, bool muted)
     {
@@ -997,6 +1001,7 @@ private:
     /// World-space center of the selected block's arrow gizmo (block center).
     /// Returns false if there is no selected block.
     bool  getSelectedGizmoOrigin(Vec3f& outOrigin, int& outSerial) const;
+    juce::File copyAudioToWorkspace(const juce::File& sourceFile);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ViewPortComponent)
 };

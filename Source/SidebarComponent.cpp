@@ -265,8 +265,8 @@ SidebarComponent::SidebarComponent()
             ? juce::CharPointer_UTF8("\xe2\x98\xb0")
             : juce::CharPointer_UTF8("\xe2\x9c\x95"));
     };
-    addAndMakeVisible(blockListButton);
-    blockListButton.onClick = [this]()
+    addAndMakeVisible(AudioListButton);
+    AudioListButton.onClick = [this]()
     {
         blockPanelOpen = true;
         infoPanelOpen = false;
@@ -282,20 +282,20 @@ SidebarComponent::SidebarComponent()
         repaint();
         resized();
     };
-    blockListButton.setButtonText("");
+    AudioListButton.setButtonText("");
     infoButton.setButtonText("");
 
-    blockListButton.setLookAndFeel(&tabLookAndFeel_);
+    AudioListButton.setLookAndFeel(&tabLookAndFeel_);
     infoButton.setLookAndFeel(&tabLookAndFeel_);
 
-    blockListButton.setMouseCursor(juce::MouseCursor::PointingHandCursor);
+    AudioListButton.setMouseCursor(juce::MouseCursor::PointingHandCursor);
     infoButton.setMouseCursor(juce::MouseCursor::PointingHandCursor);
     setOpaque(true);
 }
 
 SidebarComponent::~SidebarComponent()
 {
-    blockListButton.setLookAndFeel(nullptr);
+    AudioListButton.setLookAndFeel(nullptr);
     infoButton.setLookAndFeel(nullptr);
 }
 
@@ -313,11 +313,11 @@ void SidebarComponent::setCollapsed(bool shouldCollapse)
     repaint();
 }
 
-void SidebarComponent::setBlocks(const std::vector<Block>& newBlocks)
+void SidebarComponent::setAudioList(const std::vector<AudioItem>& newAudioFiles)
 {
     {
-        juce::ScopedLock lock(blockListMutex);
-        blockListUI = newBlocks;
+        juce::ScopedLock lock(AudioListMutex);
+        AudioListUI = newAudioFiles;
     }
 
     repaint();
@@ -335,7 +335,7 @@ void SidebarComponent::resized()
     {
         toggleButton.setBounds(10, 10, 30, 30);
 
-        blockListButton.setBounds(0, 0, 0, 0);
+        AudioListButton.setBounds(0, 0, 0, 0);
         infoButton.setBounds(0, 0, 0, 0);
 
         xEditor.setBounds(0, 0, 0, 0);
@@ -367,7 +367,7 @@ void SidebarComponent::resized()
     const int tabAreaW = getWidth() - tabX - closeW - closeGap - 10;
     const int tabW = tabAreaW / 2;
 
-    blockListButton.setBounds(tabX, tabY, tabW, tabH);
+    AudioListButton.setBounds(tabX, tabY, tabW, tabH);
     infoButton.setBounds(tabX + tabW, tabY, tabW, tabH);
 
     // Hide all info controls by default
@@ -620,40 +620,40 @@ void SidebarComponent::paint(juce::Graphics& g)
         g.drawLine((float)b.getRight(), (float)y, (float)getWidth(), (float)y, 1.0f);
     };
 
-    drawTab(blockListButton, isBlockPanelOpen(), "Blocks");
+    drawTab(AudioListButton, isBlockPanelOpen(), "Audio");
     drawTab(infoButton, isInfoPanelOpen(), "Info");
 
     drawDividerSkippingActiveTab(
-        isBlockPanelOpen() ? blockListButton : infoButton
+        isBlockPanelOpen() ? AudioListButton : infoButton
     );
 
     const int contentTopY = 58;
 
     if (isBlockPanelOpen())
     {
-        std::vector<Block> snapshot;
+        std::vector<AudioItem> snapshot;
         {
-            juce::ScopedLock lock(blockListMutex);
-            snapshot = blockListUI;
+            juce::ScopedLock lock(AudioListMutex);
+            snapshot = AudioListUI;
         }
 
         const int itemCount = (int)snapshot.size();
 
         g.setFont(juce::Font("Public Sans", 16.0f, juce::Font::bold));
         g.setColour(juce::Colour(0xff88aacc));
-        g.drawText("Blocks (" + juce::String(itemCount) + ")",
-                   12, contentTopY,
-                   getWidth() - 24, 28,
-                   juce::Justification::centredLeft);
+        g.drawText("Audio Files (" + juce::String(itemCount) + ")",
+                12, contentTopY,
+                getWidth() - 24, 28,
+                juce::Justification::centredLeft);
 
         if (itemCount == 0)
         {
             g.setFont(juce::Font("Public Sans", 13.0f, juce::Font::plain));
             g.setColour(text.withAlpha(0.7f));
-            g.drawText("No blocks yet",
-                       12, contentTopY + 40,
-                       getWidth() - 24, 24,
-                       juce::Justification::centredLeft);
+            g.drawText("No workspace audio files",
+                    12, contentTopY + 40,
+                    getWidth() - 24, 24,
+                    juce::Justification::centredLeft);
             return;
         }
 
@@ -662,7 +662,7 @@ void SidebarComponent::paint(juce::Graphics& g)
         const int totalContentH = itemCount * kRowH + 6;
         const int maxScroll = std::max(0, totalContentH - visibleContentH);
 
-        blockListScroll = std::clamp(blockListScroll, 0, maxScroll);
+        AudioListScroll = std::clamp(AudioListScroll, 0, maxScroll);
 
         g.saveState();
         g.reduceClipRegion(0, listY, getWidth(), visibleContentH);
@@ -671,7 +671,7 @@ void SidebarComponent::paint(juce::Graphics& g)
 
         for (int i = 0; i < itemCount; ++i)
         {
-            int rowY = listY + 3 + i * kRowH - blockListScroll;
+            int rowY = listY + 3 + i * kRowH - AudioListScroll;
 
             if (rowY + kRowH < listY)
                 continue;
@@ -685,23 +685,14 @@ void SidebarComponent::paint(juce::Graphics& g)
                 g.fillRect(1, rowY, getWidth() - 2, kRowH);
             }
 
-            const auto& e = snapshot[i];
-
-            const juce::String name = e.displayName.isNotEmpty()
-                ? e.displayName
-                : juce::String("Block ") + juce::String(e.serial);
-
-            juce::String row = name
-                             + "  (" + juce::String(e.pos.x)
-                             + ", "  + juce::String(e.pos.y)
-                             + ", "  + juce::String(e.pos.z) + ")";
+            const auto& item = snapshot[i];
 
             g.setColour(text);
-            g.drawText(row,
-                       8, rowY + 3,
-                       getWidth() - 16, kRowH - 6,
-                       juce::Justification::centredLeft,
-                       true);
+            g.drawText(item.fileName,
+                    8, rowY + 3,
+                    getWidth() - 16, kRowH - 6,
+                    juce::Justification::centredLeft,
+                    true);
         }
 
         g.restoreState();
