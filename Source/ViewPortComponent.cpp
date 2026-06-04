@@ -2502,11 +2502,15 @@ void ViewPortComponent::doRaycast(float mx, float my)
 
 void ViewPortComponent::pushBlockListToUi(int removedSerial)
 {
-    juce::ignoreUnused(removedSerial);
-
-    juce::MessageManager::callAsync([this]()
+    juce::MessageManager::callAsync([this, removedSerial]()
     {
         refreshWorkspaceAudioPanel();
+
+        // The sidebar's left tab now lists workspace audio (teammate's change),
+        // but the Info panel still tracks the selected block — so a deleted
+        // block must still clear that selection or it shows stale info.
+        if (sidebar != nullptr && removedSerial >= 0)
+            sidebar->clearSelectedBlockIfSerial(removedSerial);
 
         if (onBlockListChanged)
             onBlockListChanged();

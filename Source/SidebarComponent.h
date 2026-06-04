@@ -11,13 +11,6 @@
 class MuteSchedulePopup;
 class KeyframeEditorPopup;
 
-struct AudioItem
-{
-    juce::String fileName;
-    juce::String relativePath;
-    juce::String fullPath;
-};
-
 class SidebarComponent : public juce::Component
 {
 public:
