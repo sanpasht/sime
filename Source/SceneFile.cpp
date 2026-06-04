@@ -10,7 +10,7 @@
 namespace
 {
     static constexpr char     kMagic[4] = { 'S', 'I', 'M', 'E' };
-    static constexpr uint16_t kVersion  = 11;  // v11: camera-path keyframes now carry holdDurationSec
+    static constexpr uint16_t kVersion  = 14;  // v14: per-scheduled-sound loop + gap
     static constexpr char     kCamPathMagic[4] = { 'C', 'P', 'T', 'H' };
 
     // Tiny endian-agnostic helpers (no-op on x86 but keeps intent clear)
@@ -114,6 +114,27 @@ bool SceneFile::save(const std::string& path,
             writeVal<double>(f, w.startSec);
             writeVal<double>(f, w.durationSec);
         }
+
+        // --- v12 additions: scheduled sounds (multi-sound) ---
+        // soundId is runtime-only; persist the library-relative path so the
+        // sound can be re-resolved on load (same scheme as customFilePath).
+        writeVal<uint32_t>(f, static_cast<uint32_t>(b.soundSchedule.size()));
+        for (const auto& se : b.soundSchedule)
+        {
+            writeVal<double>(f, se.startSec);
+            writeVal<double>(f, se.durationSec);
+            uint16_t rpLen = static_cast<uint16_t>(se.relativePath.size());
+            writeVal<uint16_t>(f, rpLen);
+            if (rpLen > 0)
+                f.write(se.relativePath.data(), rpLen);
+
+            // --- v14 additions: per-scheduled-sound loop settings ---
+            writeVal<uint8_t>(f, se.loop ? 1 : 0);
+            writeVal<double>(f, se.loopGapSec);
+        }
+
+        // --- v13 additions: movement-loop flag ---
+        writeVal<uint8_t>(f, b.movementLoop ? 1 : 0);
     }
 
     // --- v10: optional camera-path trailer (always emitted; can be empty) ---
@@ -349,6 +370,45 @@ bool SceneFile::load(const std::string& path,
                 if (win.durationSec > 0.0)
                     b.muteWindows.push_back(win);
             }
+        }
+
+        if (version >= 12)
+        {
+            uint32_t sndCount = 0;
+            if (!readVal(f, sndCount)) return false;
+            if (sndCount > 4096) return false;
+
+            b.soundSchedule.clear();
+            b.soundSchedule.reserve(sndCount);
+            for (uint32_t s = 0; s < sndCount; ++s)
+            {
+                SoundEvent se;
+                if (!readVal(f, se.startSec))    return false;
+                if (!readVal(f, se.durationSec)) return false;
+                uint16_t rpLen = 0;
+                if (!readVal(f, rpLen)) return false;
+                if (rpLen > 0)
+                {
+                    se.relativePath.resize(rpLen);
+                    f.read(&se.relativePath[0], rpLen);
+                    if (!f.good()) return false;
+                }
+                if (version >= 14)
+                {
+                    uint8_t lp = 0;
+                    if (!readVal(f, lp)) return false;
+                    se.loop = (lp != 0);
+                    if (!readVal(f, se.loopGapSec)) return false;
+                }
+                b.soundSchedule.push_back(std::move(se));
+            }
+        }
+
+        if (version >= 13)
+        {
+            uint8_t ml = 0;
+            if (!readVal(f, ml)) return false;
+            b.movementLoop = (ml != 0);
         }
 
         b.resetPlaybackState();

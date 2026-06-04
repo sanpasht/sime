@@ -11,13 +11,6 @@
 class MuteSchedulePopup;
 class KeyframeEditorPopup;
 
-struct AudioItem
-{
-    juce::String fileName;
-    juce::String relativePath;
-    juce::String fullPath;
-};
-
 class SidebarComponent : public juce::Component
 {
 public:
@@ -108,6 +101,24 @@ public:
     /// resolves the sample length and updates the region duration.
     std::function<void(int serial)> onMatchDurationToSound;
 
+    /// Fired instantly when the user toggles "Freeze this block" in the Info
+    /// panel.  Runtime-only (not part of Apply) — mirrors the global Freeze Move
+    /// toolbar toggle but scoped to one block.
+    std::function<void(int serial, bool frozen)> onFreezeBlockMovement;
+
+    /// Fired when the user toggles "Loop movement".  Persisted by the host.
+    std::function<void(int serial, bool loop)> onSetMovementLoop;
+
+    /// Fired when the user picks a duration/movement reconciliation action from
+    /// the dropdown.  `action` is a DurationSyncAction value (cast to int to keep
+    /// this header free of BlockEntry.h enum dependency for forwarders).
+    std::function<void(int serial, int action)> onDurationSyncAction;
+
+    /// Fired when the user clicks "Sound Schedule..." — the host owns the popup
+    /// (it has the sound library + audio engine).  Carries the button's screen
+    /// position so the host can place the popup next to it.
+    std::function<void(int serial, juce::Point<int> screenPos)> onEditSoundSchedule;
+
     /// Fired when the user clicks Apply inside the Keyframe Editor popup.
     /// The vector replaces the block's `recordedMovement`; an empty / single
     /// entry vector clears the path (engine treats <2 frames as no motion).
@@ -147,6 +158,12 @@ private:
     juce::TextEditor durationEditor;
 
     juce::ToggleButton movementEnabledToggle { "Enable Recorded Movement" };
+
+    /// Per-block runtime movement freeze (instant; not part of Apply).
+    juce::ToggleButton freezeBlockToggle_ { "Freeze this block (hold position)" };
+
+    /// Loop the recorded movement (teleport to start + replay).  Instant toggle.
+    juce::ToggleButton movementLoopToggle_ { "Loop movement (teleport to start)" };
 
     // Opens the floating Keyframe Editor so the user can author / edit
     // position keyframes directly (alternative to Alt-drag recording).
@@ -193,6 +210,13 @@ private:
 
     // One-click: match the block's region duration to the loaded sample length
     juce::TextButton matchSoundDurBtn_ { "Match Duration to Sound" };
+
+    /// Advanced duration/movement reconciliation (distort sound, distort
+    /// movement, or hard-cut).  Applies on selection then resets to the header.
+    juce::ComboBox   durationSyncCombo_;
+
+    /// Opens the Sound Schedule popup (multiple timed sounds for this block).
+    juce::TextButton soundScheduleBtn_ { "Sound Schedule..." };
 
     juce::TextButton distanceBtn_ { "Distance..." };
 

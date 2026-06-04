@@ -175,6 +175,37 @@ void ViewPortComponent::loadScene(std::vector<BlockEntry> newBlocks)
         }
     }
 
+    // Re-resolve scheduled sounds (v12) — each carries a library-relative path
+    // that must be turned back into a runtime soundId so the sequencer can play
+    // it.  Absolute paths are treated as user WAVs loaded directly.
+    for (auto& b : newBlocks)
+    {
+        for (auto& se : b.soundSchedule)
+        {
+            if (se.relativePath.empty()) { se.soundId = -1; continue; }
+            juce::String rp(se.relativePath);
+            if (juce::File::isAbsolutePath(rp))
+            {
+                juce::File wav(rp);
+                if (wav.existsAsFile())
+                {
+                    // Stable synthetic id derived from the path hash so reloads
+                    // don't collide with library ids.
+                    int sid = 500000 + (int) (rp.hashCode() & 0x3FFFFF);
+                    if (!audioEngine.hasSample(sid))
+                        audioEngine.loadSample(sid, wav);
+                    se.soundId = sid;
+                }
+            }
+            else
+            {
+                int idx = library_.findByRelativePath(rp);
+                if (idx >= 0)
+                    se.soundId = library_.ensureLoaded(idx, audioEngine);
+            }
+        }
+    }
+
     {
         juce::ScopedLock lock(loadMutex_);
         pendingLoadBlocks_ = std::move(newBlocks);
@@ -828,11 +859,37 @@ void ViewPortComponent::renderOpenGL()
             {
                 if (b.serial == mo.serial)
                 {
-                    b.durationSec         = mo.duration;
-                    b.durationLocked      = true;
+                    // Recording a movement must NOT cut the sound.  Pin the
+                    // movement to its own recorded length (so it plays out fully
+                    // and independently of the audio region), and only EXTEND the
+                    // region if the motion is longer than the current duration.
+                    // Never shrink it, and never lock it — the user remains free
+                    // to set the sound duration manually, and assigning a sound
+                    // still auto-fits to max(sample, movement).
+                    const double pathEnd = b.recordedMovement.empty()
+                        ? mo.duration
+                        : b.recordedMovement.back().timeSec;
+                    b.movementDurationSec = pathEnd;
+                    b.durationSec         = std::max(b.durationSec, pathEnd);
                     b.hasRecordedMovement = true;
                     b.movementEnabled     = true;
                     b.isRecordingMovement = false;
+
+                    // Return the block to the START of its recorded path so the
+                    // viewport isn't left showing it at the drag-end position;
+                    // playback / scrub will move it forward from here.
+                    if (!b.recordedMovement.empty()
+                        && b.pos != b.recordedMovement.front().position)
+                    {
+                        voxelGrid.remove(b.pos);
+                        b.pos = b.recordedMovement.front().position;
+                        voxelGrid.add(b.pos);
+                        renderer.meshDirty = true;
+                    }
+
+                    b.recordingTimeOffset = 0.0;
+                    b.recordedMovementBackup.clear();
+
                     DBG("Movement confirm applied on GL thread: block " << mo.serial
                         << "  keyframes=" << (int)b.recordedMovement.size());
 
@@ -853,8 +910,39 @@ void ViewPortComponent::renderOpenGL()
             {
                 if (b.serial == mo.serial)
                 {
-                    b.recordedMovement.clear();
+                    // Restore the block to where it was BEFORE recording began
+                    // (recordingStartPos), instead of leaving it stranded at the
+                    // last dragged position.  Keep the voxel grid consistent.
+                    if (b.pos != b.recordingStartPos)
+                    {
+                        voxelGrid.remove(b.pos);
+                        b.pos = b.recordingStartPos;
+                        voxelGrid.add(b.pos);
+                        renderer.meshDirty = true;
+                    }
+
+                    // Multi-segment cancel keeps the previously recorded path and
+                    // only drops the segment that was just being recorded.
+                    if (b.recordingTimeOffset > 0.0 && !b.recordedMovementBackup.empty())
+                    {
+                        b.recordedMovement    = b.recordedMovementBackup;
+                        b.hasRecordedMovement = b.recordedMovement.size() >= 2;
+                    }
+                    else
+                    {
+                        b.recordedMovement.clear();
+                        b.hasRecordedMovement = false;
+                    }
                     b.isRecordingMovement = false;
+                    b.recordingTimeOffset = 0.0;
+                    b.recordedMovementBackup.clear();
+
+                    const int cancelledSerial = mo.serial;
+                    juce::MessageManager::callAsync([this, cancelledSerial]()
+                    {
+                        if (onBlockPropertiesChanged)
+                            onBlockPropertiesChanged(cancelledSerial);
+                    });
                     break;
                 }
             }
@@ -1121,11 +1209,31 @@ void ViewPortComponent::renderOpenGL()
                                 b.recordingStartTime  =
                                     juce::Time::getMillisecondCounterHiRes() * 0.001;
                                 b.recordingStartPos   = b.pos;
+
+                                // Multi-segment: if the playhead is past this
+                                // block's start and a path already exists, anchor
+                                // the new segment at the playhead and keep the
+                                // prior path (spliced in on stop).  Otherwise this
+                                // is a fresh single-segment recording.
+                                const double pbTime =
+                                    transportClock.currentTimeSec() - b.startTimeSec;
+                                if (pbTime > 0.05 && b.recordedMovement.size() >= 2)
+                                {
+                                    b.recordingTimeOffset    = pbTime;
+                                    b.recordedMovementBackup = b.recordedMovement;
+                                }
+                                else
+                                {
+                                    b.recordingTimeOffset = 0.0;
+                                    b.recordedMovementBackup.clear();
+                                }
+
                                 b.recordedMovement.clear();
                                 recordingBlockSerial  = b.serial;
                                 b.recordedMovement.push_back(
                                     MovementKeyFrame{ 0.0, b.pos });
-                                DBG("Recording started on GL thread: block " << b.serial);
+                                DBG("Recording started on GL thread: block " << b.serial
+                                    << "  offset=" << b.recordingTimeOffset);
 
                                 if (b.soundId >= 0)
                                 {
@@ -1189,10 +1297,36 @@ void ViewPortComponent::renderOpenGL()
                     {
                         b.isRecordingMovement = false;
 
+                        // Multi-segment splice: offset the freshly recorded
+                        // keyframes to the playhead and merge them after any
+                        // previously recorded segments (sorted by time).  The
+                        // block holds between segments and resumes from its
+                        // current position, so no teleport is introduced.
+                        if (b.recordingTimeOffset > 0.0 && !b.recordedMovementBackup.empty())
+                        {
+                            std::vector<MovementKeyFrame> merged = b.recordedMovementBackup;
+                            merged.reserve(merged.size() + b.recordedMovement.size());
+                            for (auto kf : b.recordedMovement)
+                            {
+                                kf.timeSec += b.recordingTimeOffset;
+                                merged.push_back(kf);
+                            }
+                            std::sort(merged.begin(), merged.end(),
+                                      [](const MovementKeyFrame& a, const MovementKeyFrame& c)
+                                      { return a.timeSec < c.timeSec; });
+                            b.recordedMovement = std::move(merged);
+                        }
+
+                        // Propose a duration that covers the whole (possibly
+                        // multi-segment) path so later segments actually play.
+                        const double pathEnd = b.recordedMovement.empty()
+                            ? recordedDuration
+                            : b.recordedMovement.back().timeSec;
+
                         // Copy keyframes by value so the message thread gets its
                         // own independent copy — no shared reference to blockList.
                         int     captSerial   = b.serial;
-                        double  captDuration = recordedDuration;
+                        double  captDuration = std::max(recordedDuration, pathEnd);
                         auto    captKeyframes= b.recordedMovement;   // copy
                         auto    captPos      = stopReq.mousePos;
 
@@ -1411,6 +1545,7 @@ void ViewPortComponent::renderOpenGL()
         // can compute the right playback rate.  Cheap: small hash lookup.
         const auto& lib = audioEngine.getSampleLibrary();
         const double sr = audioEngine.getOutputSampleRate();
+        const int soloS = soloSerial_.load();   // "Play In Time" solo (-1 = off)
         for (auto& b : blockList)
         {
             auto it = lib.find(b.soundId);
@@ -1419,46 +1554,210 @@ void ViewPortComponent::renderOpenGL()
                 : 0.0;
 
             // Compose per-block indefinite mute = block's own isMuted OR the
-            // toolbar's per-type mute.  Time-window mute is handled inside
-            // the sequencer because it depends on the current transport time.
-            b.effectiveMuted = b.isMuted || isBlockTypeMuted(b.blockType);
+            // toolbar's per-type mute OR (solo active and this isn't the soloed
+            // block).  Time-window mute is handled inside the sequencer because
+            // it depends on the current transport time.
+            b.effectiveMuted = b.isMuted || isBlockTypeMuted(b.blockType)
+                             || (soloS >= 0 && b.serial != soloS);
+        }
+
+        // Mirror the GL-thread selection so the toolbar can enable/disable the
+        // audition buttons from the message thread.
+        selectedSerialAtomic_.store(selectedSerial);
+
+        // ── One-shot "Play Sound" preview of a chosen block ──────────────────
+        if (auditionRequested_.exchange(false))
+        {
+            const int audSer = auditionSerial_.load();
+            for (const auto& b : blockList)
+            {
+                if (b.serial != audSer)
+                    continue;
+
+                // Time-aware preview: play whichever sound the block would be
+                // sounding at the current playhead.  We pick the candidate with
+                // the latest start time <= now (a scheduled sound or the block's
+                // main region); before everything has started we fall back to
+                // the main sound.  This makes "Play" reflect what you'd hear at
+                // the playhead when the block carries several scheduled sounds.
+                const double now = transportClock.currentTimeSec();
+                int    bestSound = b.soundId;
+                double bestStart = (b.soundId >= 0) ? b.startTimeSec : -1.0e18;
+                for (const auto& se : b.soundSchedule)
+                {
+                    if (se.soundId < 0) continue;
+                    if (se.startSec <= now + 1e-6 && se.startSec >= bestStart)
+                    {
+                        bestStart = se.startSec;
+                        bestSound = se.soundId;
+                    }
+                }
+
+                if (bestSound >= 0)
+                {
+                    SequencerEvent startEv;
+                    startEv.type           = SequencerEventType::Start;
+                    startEv.blockSerial    = b.serial;
+                    startEv.soundId        = bestSound;
+                    startEv.triggerTimeSec = 0.0;
+                    startEv.blockX = static_cast<float>(b.pos.x);
+                    startEv.blockY = static_cast<float>(b.pos.y);
+                    startEv.blockZ = static_cast<float>(b.pos.z);
+                    audioEngine.processEvents({ startEv });
+                }
+                break;
+            }
+        }
+
+        // ── Drain pending per-block freeze toggles (sidebar) ─────────────────
+        {
+            std::vector<std::pair<int,bool>> toggles;
+            std::vector<std::pair<int,bool>> loopToggles;
+            {
+                juce::ScopedLock lock(freezeToggleMutex_);
+                toggles.swap(pendingFreezeToggles_);
+                loopToggles.swap(pendingMovementLoopToggles_);
+            }
+            for (const auto& t : toggles)
+                for (auto& b : blockList)
+                    if (b.serial == t.first)
+                    {
+                        b.movementFrozen = t.second;
+                        break;
+                    }
+            for (const auto& t : loopToggles)
+                for (auto& b : blockList)
+                    if (b.serial == t.first)
+                    {
+                        b.movementLoop      = t.second;
+                        b.movementLoopIndex = -1;
+                        const int chSer = b.serial;
+                        juce::MessageManager::callAsync([this, chSer]()
+                        {
+                            if (onBlockPropertiesChanged)
+                                onBlockPropertiesChanged(chSer);
+                        });
+                        break;
+                    }
+        }
+
+        // ── Drain pending sound-schedule replacements (Sound Schedule popup) ──
+        {
+            std::vector<std::pair<int, std::vector<SoundEvent>>> scheds;
+            {
+                juce::ScopedLock lock(soundScheduleMutex_);
+                scheds.swap(pendingSoundSchedules_);
+            }
+            for (auto& s : scheds)
+                for (auto& b : blockList)
+                    if (b.serial == s.first)
+                    {
+                        b.soundSchedule = std::move(s.second);
+                        for (auto& se : b.soundSchedule)   // fresh runtime state
+                        {
+                            se.started  = false;
+                            se.finished = false;
+                        }
+                        const int chSer = b.serial;
+                        juce::MessageManager::callAsync([this, chSer]()
+                        {
+                            if (onBlockPropertiesChanged)
+                                onBlockPropertiesChanged(chSer);
+                        });
+                        break;
+                    }
         }
 
         const auto events = sequencer.update(transportClock, blockList);
-        
-        // Process movement events and update voxel grid
+
+        // "Freeze Movement": a block is effectively frozen when the global
+        // toolbar toggle is on OR its own per-block freeze flag is set.  Frozen
+        // blocks hold their current position (visually + as a spatial-audio
+        // source) even if they carry a recorded path.  The sequencer still runs,
+        // so un-freezing re-syncs the block to its on-path position for the
+        // current transport time (resume from "now").  We NEVER kill voices on
+        // un-freeze (that would silence an already-playing region); instead we
+        // emit a single Movement event to reposition the live voice.
+        const bool globalFreeze = blockMovementFrozen_.load();
+        const double nowT = transportClock.currentTimeSec();
+
+        std::vector<SequencerEvent> unfreezeResync;
+        bool anyUnfroze = false;
+        for (auto& b : blockList)
+        {
+            const bool eff = globalFreeze || b.movementFrozen;
+            if (!eff && b.wasMovementFrozen)
+            {
+                // This block just un-froze — snap only it, leave others alone.
+                if (SequencerEngine::snapBlockToTime(b, nowT))
+                    anyUnfroze = true;
+
+                if (b.hasRecordedMovement)
+                {
+                    SequencerEvent mv;
+                    mv.type        = SequencerEventType::Movement;
+                    mv.blockSerial = b.serial;
+                    mv.soundId     = b.soundId;
+                    mv.blockX = static_cast<float>(b.pos.x);
+                    mv.blockY = static_cast<float>(b.pos.y); // snap applied YOffset
+                    mv.blockZ = static_cast<float>(b.pos.z);
+                    unfreezeResync.push_back(mv);
+                }
+            }
+            b.wasMovementFrozen = eff;
+        }
+        if (anyUnfroze)
+        {
+            voxelGrid.clear();
+            for (const auto& b : blockList)
+                voxelGrid.add(b.pos);
+            renderer.meshDirty = true;
+        }
+        if (!unfreezeResync.empty())
+            audioEngine.processEvents(unfreezeResync);
+
+        // Helper: is the block with this serial currently effectively frozen?
+        auto serialFrozen = [&](int serial) -> bool
+        {
+            if (globalFreeze) return true;
+            for (const auto& b : blockList)
+                if (b.serial == serial)
+                    return b.movementFrozen;
+            return false;
+        };
+
+        // Apply Movement events to visible voxels, skipping frozen blocks.  We
+        // also filter those events out of the audio path so the spatial source
+        // stays put (no "ghost path").
+        std::vector<SequencerEvent> audioEvents;
+        audioEvents.reserve(events.size());
         for (const auto& ev : events)
         {
+            if (ev.type == SequencerEventType::Movement && serialFrozen(ev.blockSerial))
+                continue;   // frozen: drop from both visual + audio
+
             if (ev.type == SequencerEventType::Movement)
             {
                 for (auto& b : blockList)
                 {
                     if (b.serial == ev.blockSerial)
                     {
-                        // Remove from old position
                         voxelGrid.remove(b.pos);
-                        
-                        // Update to new position
                         Vec3i newPos = {
                             static_cast<int>(ev.blockX),
                             static_cast<int>(ev.blockY),
                             static_cast<int>(ev.blockZ)
                         };
                         b.pos = newPos;
-                        
-                        // Add at new position
                         voxelGrid.add(newPos);
                         renderer.meshDirty = true;
-                        
-                        DBG("Block " << b.serial << " moved to (" 
-                            << newPos.x << "," << newPos.y << "," << newPos.z << ")");
                         break;
                     }
                 }
             }
+            audioEvents.push_back(ev);
         }
-        
-        audioEngine.processEvents(events);
+        audioEngine.processEvents(audioEvents);
  
         // Detect loop wrap (transportClock time jumped backwards)
         const double curT = transportClock.currentTimeSec();
@@ -2203,11 +2502,15 @@ void ViewPortComponent::doRaycast(float mx, float my)
 
 void ViewPortComponent::pushBlockListToUi(int removedSerial)
 {
-    juce::ignoreUnused(removedSerial);
-
-    juce::MessageManager::callAsync([this]()
+    juce::MessageManager::callAsync([this, removedSerial]()
     {
         refreshWorkspaceAudioPanel();
+
+        // The sidebar's left tab now lists workspace audio (teammate's change),
+        // but the Info panel still tracks the selected block — so a deleted
+        // block must still clear that selection or it shows stale info.
+        if (sidebar != nullptr && removedSerial >= 0)
+            sidebar->clearSelectedBlockIfSerial(removedSerial);
 
         if (onBlockListChanged)
             onBlockListChanged();
@@ -3400,6 +3703,85 @@ void ViewPortComponent::matchBlockDurationToSound(int serial)
             b.isLooping, b.loopDurationSec, b.muteWindows
         });
         // Sidebar info will refresh on the next frame snapshot.
+        return;
+    }
+}
+
+void ViewPortComponent::applyDurationSync(int serial, DurationSyncAction action)
+{
+    const auto& lib = audioEngine.getSampleLibrary();
+    const double sampleRate = audioEngine.getOutputSampleRate();
+    if (sampleRate <= 0.0)
+        return;
+
+    juce::ScopedLock lock(blockListSnapshotMutex_);
+    for (auto& b : blockListSnapshot_)
+    {
+        if (b.serial != serial) continue;
+        if (b.soundId < 0) return;
+
+        auto itLib = lib.find(b.soundId);
+        if (itLib == lib.end() || itLib->second.getNumSamples() <= 0)
+            return;
+
+        const double natDur = itLib->second.getNumSamples() / sampleRate;  // S
+        if (natDur <= 0.001) return;
+
+        const bool hasMov = b.hasRecordedMovement
+                         && b.movementEnabled
+                         && b.recordedMovement.size() >= 2;
+        // Movement length the user wants (falls back to region duration).
+        const double movDur = hasMov ? b.effectiveMovementDuration() : b.durationSec;  // M
+
+        double  newDur     = b.durationSec;
+        double  newMovDur  = b.movementDurationSec;
+        uint8_t newMode    = static_cast<uint8_t>(b.playbackMode);
+
+        switch (action)
+        {
+            case DurationSyncAction::MatchDurationToSound:
+                newDur    = std::max(natDur, hasMov ? movDur : 0.0);
+                newMovDur = (hasMov && b.movementDurationSec <= 0.001) ? movDur
+                                                                       : b.movementDurationSec;
+                break;
+
+            case DurationSyncAction::DistortSoundToMovement:
+                // Region = movement length; rate fit via Stretch/Speed so the
+                // sound finishes exactly at the movement end (audio affected).
+                newDur    = movDur;
+                newMovDur = 0.0;   // movement uses region duration (= movDur)
+                newMode   = static_cast<uint8_t>(natDur > movDur
+                                ? BlockPlaybackMode::Speed       // sound longer -> speed up
+                                : BlockPlaybackMode::Stretch);   // sound shorter -> slow down
+                break;
+
+            case DurationSyncAction::DistortMovementToSound:
+                // Movement stretched/compressed to the sound length; sound plays
+                // at its natural rate (audio untouched).
+                newDur    = natDur;
+                newMovDur = natDur;
+                newMode   = static_cast<uint8_t>(BlockPlaybackMode::Natural);
+                break;
+
+            case DurationSyncAction::HardCutAtMovement:
+                // Region = movement length; sound plays natural and is cut at the
+                // region end (no distortion).
+                newDur    = movDur;
+                newMovDur = 0.0;
+                newMode   = static_cast<uint8_t>(BlockPlaybackMode::Natural);
+                break;
+        }
+
+        juce::ScopedLock lk(sidebarEditMutex_);
+        pendingSidebarEdits_.push_back({
+            serial, b.pos, b.startTimeSec, newDur,
+            b.movementEnabled, true,
+            newMode,
+            newMovDur,
+            b.movementYOffset,
+            b.isMuted, b.isHidden, b.loopBufferSec,
+            b.isLooping, b.loopDurationSec, b.muteWindows
+        });
         return;
     }
 }

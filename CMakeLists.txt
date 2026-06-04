@@ -29,6 +29,7 @@ target_sources(SIME PRIVATE
     Source/TransportClock.cpp
     Source/Blockeditpopup.cpp
     Source/MuteSchedulePopup.cpp
+    Source/SoundSchedulePopup.cpp
     Source/KeyframeEditorPopup.cpp
     Source/CameraPathPopup.cpp
     Source/HelpPopup.cpp

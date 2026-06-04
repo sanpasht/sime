@@ -167,12 +167,73 @@ static void processOccurrence(BlockEntry& block,
         const double targetSpan   = block.effectiveMovementDuration();
 
         const double rawRelative  = now - startTime;
-        const double playbackTime = (targetSpan > 0.001 && recordedSpan > 0.001)
+        double playbackTime = (targetSpan > 0.001 && recordedSpan > 0.001)
             ? (rawRelative * recordedSpan / targetSpan)
             : rawRelative;
 
         if (triggeredKeyframes.size() != block.recordedMovement.size())
             triggeredKeyframes.resize(block.recordedMovement.size(), false);
+
+        // Movement looping (per segment).  A "segment" is a contiguous run of
+        // keyframes; segments are separated by the recorded hold/gap left when
+        // the user records an additional movement at a later playhead.  When
+        // looping is on, each segment repeats within its OWN window — from the
+        // segment's start time until the next segment begins (or the region end
+        // for the last segment).  The block teleports back to the segment's
+        // first keyframe each lap (the only sanctioned teleport) and keeps
+        // repeating until the playhead reaches the next segment, which then
+        // plays normally.  This is what lets "loop seg 1, then play seg 2" work.
+        if (block.movementLoop && block.recordedMovement.size() >= 2)
+        {
+            const auto& kfs = block.recordedMovement;
+            constexpr double kSegGap = 0.35;   // gap > this starts a new segment
+
+            // Locate the segment window [segStart, nextSegStart) containing the
+            // current (un-wrapped) playbackTime.
+            size_t segFirst = 0, segLast = kfs.size() - 1;
+            {
+                size_t i = 0;
+                while (i < kfs.size())
+                {
+                    size_t j = i;
+                    while (j + 1 < kfs.size()
+                           && (kfs[j + 1].timeSec - kfs[j].timeSec) <= kSegGap)
+                        ++j;
+                    const double sStart = kfs[i].timeSec;
+                    const double nStart = (j + 1 < kfs.size())
+                                            ? kfs[j + 1].timeSec
+                                            : (recordedSpan + 1.0e9);
+                    if (playbackTime + 1e-6 >= sStart && playbackTime < nStart)
+                    {
+                        segFirst = i; segLast = j;
+                        break;
+                    }
+                    i = j + 1;
+                }
+            }
+
+            const double segStartT = kfs[segFirst].timeSec;
+            const double segSpan   = kfs[segLast].timeSec - segStartT;
+
+            if (segSpan > 0.01 && playbackTime >= segStartT)
+            {
+                const double local = playbackTime - segStartT;
+                const int    lap   = static_cast<int>(local / segSpan);
+                const int    key   = static_cast<int>(segFirst) * 100000 + lap;
+                if (key != block.movementLoopIndex)
+                {
+                    block.movementLoopIndex = key;
+                    // Earlier segments are finished — mark them done so they
+                    // never re-fire (which would read as a backwards jump).
+                    for (size_t k = 0; k < segFirst && k < triggeredKeyframes.size(); ++k)
+                        triggeredKeyframes[k] = true;
+                    // Re-arm this segment so it replays from its first keyframe.
+                    for (size_t k = segFirst; k <= segLast && k < triggeredKeyframes.size(); ++k)
+                        triggeredKeyframes[k] = false;
+                }
+                playbackTime = segStartT + std::fmod(local, segSpan);
+            }
+        }
 
         for (size_t i = static_cast<size_t>(currentKeyframeIndex);
              i < block.recordedMovement.size();
@@ -257,6 +318,10 @@ std::vector<SequencerEvent> SequencerEngine::update(const TransportClock& clock,
         if (block.soundId < 0)
             continue;
 
+        // Remember where this block's events begin so we can later mirror its
+        // Movement events onto any active scheduled voices (per-sound movement).
+        const size_t evStartIdx = eventBuffer_.size();
+
         // ── Compute the block's current mute state ─────────────────────────
         //   * effectiveMuted = per-block isMuted + per-type indefinite mute
         //     (set by ViewPortComponent before calling update()).
@@ -330,6 +395,81 @@ std::vector<SequencerEvent> SequencerEngine::update(const TransportClock& clock,
                               isMutedNow,
                               eventBuffer_);
         }
+
+        // ── Scheduled sounds (independent notes, possibly different sounds) ───
+        // These fire on synthetic serials so the block's region Stop never cuts
+        // them.  Each plays once at its startSec (spatialised at the block's
+        // current position) and is cut at its endSec if still ringing.
+        for (size_t i = 0; i < block.soundSchedule.size(); ++i)
+        {
+            auto& se = block.soundSchedule[i];
+            if (se.soundId < 0) continue;
+
+            const int    synthSerial = scheduledSerial(block.serial, (int) i);
+            const double end         = se.endSec();
+
+            if (!se.started && !isMutedNow && now >= se.startSec && now < end)
+            {
+                SequencerEvent ev;
+                ev.type                 = SequencerEventType::Start;
+                ev.blockSerial          = synthSerial;
+                ev.soundId              = se.soundId;
+                ev.triggerTimeSec       = now;
+                ev.blockX               = static_cast<float>(block.pos.x);
+                ev.blockY               = static_cast<float>(block.pos.y);
+                ev.blockZ               = static_cast<float>(block.pos.z);
+                ev.playbackRateOverride = 1.0f;   // scheduled notes play naturally
+                ev.loopBuffer           = se.loop; // loop within the window if asked
+                ev.loopBufferSec        = static_cast<float>(std::max(0.0, se.loopGapSec));
+                eventBuffer_.push_back(ev);
+                se.started = true;
+            }
+
+            if (se.started && !se.finished && now >= end)
+            {
+                SequencerEvent ev;
+                ev.type           = SequencerEventType::Stop;
+                ev.blockSerial    = synthSerial;
+                ev.soundId        = se.soundId;
+                ev.triggerTimeSec = now;
+                eventBuffer_.push_back(ev);
+                se.finished = true;
+            }
+        }
+
+        // ── Per-sound movement: make active scheduled voices follow the block ──
+        // Mirror this tick's keyframe Movement events (emitted for block.serial)
+        // onto every scheduled voice currently ringing, so a note scheduled
+        // during a movement segment is spatialised as the block moves.
+        const size_t evEndIdx = eventBuffer_.size();
+        bool blockMovedThisTick = false;
+        for (size_t k = evStartIdx; k < evEndIdx; ++k)
+            if (eventBuffer_[k].type == SequencerEventType::Movement
+                && eventBuffer_[k].blockSerial == block.serial)
+            { blockMovedThisTick = true; break; }
+
+        if (blockMovedThisTick)
+        {
+            // Snapshot the Movement events first (push_back may reallocate).
+            std::vector<SequencerEvent> moves;
+            for (size_t k = evStartIdx; k < evEndIdx; ++k)
+                if (eventBuffer_[k].type == SequencerEventType::Movement
+                    && eventBuffer_[k].blockSerial == block.serial)
+                    moves.push_back(eventBuffer_[k]);
+
+            for (size_t i = 0; i < block.soundSchedule.size(); ++i)
+            {
+                const auto& se = block.soundSchedule[i];
+                if (se.soundId < 0 || !se.started || se.finished) continue;
+                const int synthSerial = scheduledSerial(block.serial, (int) i);
+                for (auto mv : moves)
+                {
+                    mv.blockSerial = synthSerial;
+                    mv.soundId     = se.soundId;
+                    eventBuffer_.push_back(mv);
+                }
+            }
+        }
     }
 
     return eventBuffer_;
@@ -392,13 +532,18 @@ bool SequencerEngine::snapBlockPositionsToTime(std::vector<BlockEntry>& blocks,
                                                double timeSec) noexcept
 {
     bool anyChanged = false;
-
     for (auto& b : blocks)
+        anyChanged |= snapBlockToTime(b, timeSec);
+    return anyChanged;
+}
+
+bool SequencerEngine::snapBlockToTime(BlockEntry& b, double timeSec) noexcept
+{
     {
         if (!b.hasRecordedMovement
             || !b.movementEnabled
             || b.recordedMovement.size() < 2)
-            continue;
+            return false;
 
         // ── Determine which occurrence (main region or any timesList entry)
         // ── the scrub time falls inside.  When the playhead is outside every
@@ -481,9 +626,8 @@ bool SequencerEngine::snapBlockPositionsToTime(std::vector<BlockEntry>& blocks,
         if (target != b.pos)
         {
             b.pos = target;
-            anyChanged = true;
+            return true;
         }
+        return false;
     }
-
-    return anyChanged;
 }

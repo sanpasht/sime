@@ -194,10 +194,76 @@ void KeyframeEditorPopup::applySnapToDraft()
             default: return 0.0;   // Off
         }
     }();
-    if (grid <= 0.0) return;
 
-    for (auto& k : draft_)
-        k.timeSec = std::round(k.timeSec / grid) * grid;
+    // "Off" restores the pristine path exactly.
+    if (grid <= 0.0)
+    {
+        draft_ = originalFrames_;
+        return;
+    }
+
+    // Resample the ORIGINAL path at a fixed interval.  We sample the position
+    // *along* the path at each grid time (linear interpolation between the two
+    // surrounding original keyframes, rounded to the nearest grid cell since
+    // block positions are integers).  This preserves the trajectory and spaces
+    // keyframes evenly — unlike the old "round each time" which collapsed many
+    // keyframes onto the same timestamp and made playback jump straight to the
+    // end.
+    if (originalFrames_.size() < 2)
+    {
+        draft_ = originalFrames_;
+        return;
+    }
+
+    std::vector<MovementKeyFrame> src = originalFrames_;
+    std::sort(src.begin(), src.end(),
+              [](const MovementKeyFrame& a, const MovementKeyFrame& b)
+              { return a.timeSec < b.timeSec; });
+
+    const double t0   = src.front().timeSec;
+    const double tEnd = src.back().timeSec;
+
+    auto posAt = [&src](double t) -> Vec3i
+    {
+        if (t <= src.front().timeSec) return src.front().position;
+        if (t >= src.back().timeSec)  return src.back().position;
+        for (size_t i = 0; i + 1 < src.size(); ++i)
+        {
+            const auto& a = src[i];
+            const auto& b = src[i + 1];
+            if (t >= a.timeSec && t < b.timeSec)
+            {
+                const double dur = b.timeSec - a.timeSec;
+                const double u   = dur > 1e-9 ? (t - a.timeSec) / dur : 0.0;
+                return Vec3i{
+                    (int) std::lround(a.position.x + (b.position.x - a.position.x) * u),
+                    (int) std::lround(a.position.y + (b.position.y - a.position.y) * u),
+                    (int) std::lround(a.position.z + (b.position.z - a.position.z) * u)
+                };
+            }
+        }
+        return src.back().position;
+    };
+
+    std::vector<MovementKeyFrame> out;
+    for (double t = t0; t <= tEnd + 1e-6; t += grid)
+    {
+        MovementKeyFrame kf;
+        kf.timeSec  = t;
+        kf.position = posAt(t);
+        out.push_back(kf);
+    }
+    // Always pin the exact final pose so the path ends where it should even if
+    // tEnd isn't a clean multiple of the grid.
+    if (out.empty() || std::abs(out.back().timeSec - tEnd) > 1e-6)
+    {
+        MovementKeyFrame kf;
+        kf.timeSec  = tEnd;
+        kf.position = src.back().position;
+        out.push_back(kf);
+    }
+
+    draft_ = std::move(out);
 }
 
 KeyframeEditorPopup::~KeyframeEditorPopup()
@@ -216,7 +282,12 @@ void KeyframeEditorPopup::setKeyframes(int blockSerial,
     editingName_   = blockName;
     anchorPos_     = anchorPos;
     draft_         = frames;
+    originalFrames_ = frames;   // pristine copy for lossless re-intervalling
     scrollY_       = 0;
+
+    // New selection starts at "Off (exact)" so the times shown are the real
+    // recorded times until the user explicitly picks an interval.
+    snapBox_.setSelectedId(1, juce::dontSendNotification);
 
     titleLabel_.setText("Position Keyframes", juce::dontSendNotification);
     subtitleLabel_.setText(blockName.isEmpty() ? juce::String("(no block selected)")
