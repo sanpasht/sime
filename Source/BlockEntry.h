@@ -396,8 +396,8 @@ struct BlockEntry
 
     static Vec3f getBlockColor(BlockType type, int soundId)
     {
-        // Custom blocks vary by soundId so different user WAVs look distinct.
-        if (type == BlockType::Custom)
+        // Custom / Synth blocks vary by soundId so different user WAVs look distinct.
+        if (type == BlockType::Custom || type == BlockType::Synth)
         {
             static const Vec3f kPalette[] = {
                 { 0.92f, 0.92f, 0.92f },   // white

@@ -311,14 +311,49 @@ the sound duration manually, and assigning a new sound still auto-fits to
 
 ## 8. What's still queued
 
-- **E1 — Tab bar + full-screen Timeline tab.**  A "Scene" tab (current view) plus
-  a dedicated, FL/Ableton-style full-screen Timeline tab that can play, scrub,
-  and speed up.  The timeline already understands scheduled sounds via
-  `getTransportDuration()` and `setBlocks()`.
-- **E2 — Synthesizer tab + render-to-WAV + Synth block type.**  A standard
-  subtractive synth that exports a WAV the user can assign to a new "Synth" block
-  type (same flow as Custom blocks).
-- **Docs** — keep this report + README current as E lands.
+- **Future synth polish** — dual oscillators, LFO, effects rack, live keyboard in the Synth tab.
+- **Docs** — keep this report + README current as features land.
+
+---
+
+## 10. E2 — Synthesizer tab (implemented)
+
+### Architecture
+
+The synth is **offline-first**: `SynthRenderer` renders a mono buffer from a
+`SynthPatch` struct (oscillator + ADSR amp envelope + resonant low-pass filter).
+The buffer is either previewed through `AudioEngine::setSampleBuffer()` or
+written to `workspaceAudios/` via `SynthRenderer::writeWav()`.
+
+Live playback in the 3D scene still uses the existing sample-voice path — no
+oscillators run on the audio thread.
+
+### New files
+
+| File | Role |
+|------|------|
+| `SynthPatch.h` | Parameter bundle (waveform, MIDI note, ADSR, filter, gain, duration) |
+| `SynthRenderer.cpp/h` | Offline render + 16-bit PCM WAV export |
+| `SynthComponent.cpp/h` | Full-screen UI on the Synth workspace tab |
+
+### Block type
+
+`BlockType::Synth` appended before `_Count` (scene v14 compatible — stored as
+uint8). Category: **Synth**. Default `soundId = -1`. Edit popup uses the same
+file-browse flow as **Custom** (`customFilePath` → `workspaceAudios/...`).
+
+### Integration points
+
+- `MainComponent` hosts `SynthComponent`, wires `onPreview` / `onExport` to
+  `ViewPortComponent::previewSynthBuffer()` and `exportSynthBufferToWorkspace()`.
+- `AudioEngine::setSampleBuffer()` registers in-memory buffers for preview.
+- Sidebar **Audio** list refreshes after export.
+
+### E1 — Timeline tab (implemented)
+
+- Shared transport clock via `wireTimelineCallbacks()` on both transport bars.
+- OpenGL viewport parked at 1×1 off-screen on non-Scene tabs so JUCE keeps the
+  context attached (0×0 detaches and freezes transport).
 
 ---
 

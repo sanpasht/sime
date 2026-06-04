@@ -42,6 +42,8 @@ target_sources(SIME PRIVATE
     Source/SoundLibrary.cpp
     Source/SoundPickerComponent.cpp
     Source/AudioAnalysis.cpp
+    Source/SynthRenderer.cpp
+    Source/SynthComponent.cpp
 )
 
 target_compile_definitions(SIME PRIVATE

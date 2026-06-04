@@ -93,6 +93,9 @@ public:
     /// Returns true on success.
     bool loadSample(int soundId, const juce::File& audioFile);
 
+    /// Copy a rendered/in-memory buffer into the sample library (message thread).
+    void setSampleBuffer(int soundId, juce::AudioBuffer<float> buffer);
+
     /// Synthesize a sine-wave test tone and store it in the sample library.
     /// Safe to call from message thread before start().
     void generateTestTone(int soundId, float frequencyHz, double durationSec);

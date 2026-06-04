@@ -469,3 +469,13 @@ void TransportBarComponent::setTimelinePlaying(bool playing)
 {
     timeline.setPlaying(playing);
 }
+
+void TransportBarComponent::setCollapsible(bool canCollapse)
+{
+    collapseButton.setVisible(canCollapse);
+    if (!canCollapse)
+        isCollapsed_ = false;   // a non-collapsible bar always shows the timeline
+    resized();
+    if (onHeightChanged)
+        onHeightChanged();
+}
