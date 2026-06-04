@@ -45,6 +45,34 @@ MainComponent::MainComponent()
     addChildComponent(transportBar);
     addChildComponent(sidebarResizer_);
 
+    // ── Workspace tab strip + per-tab content ─────────────────────────────────
+    auto setupTabButton = [this](juce::TextButton& b, WorkspaceTab t)
+    {
+        addChildComponent(b);
+        b.setColour(juce::TextButton::buttonColourId,    juce::Colour(0xff1a1d2a));
+        b.setColour(juce::TextButton::buttonOnColourId,  juce::Colour(0xff2a5298));
+        b.setColour(juce::TextButton::textColourOffId,   juce::Colour(0xff9aa3bd));
+        b.setColour(juce::TextButton::textColourOnId,    juce::Colours::white);
+        b.setClickingTogglesState(false);
+        b.onClick = [this, t] { switchTab(t); };
+    };
+    setupTabButton(sceneTabBtn_,    WorkspaceTab::Scene);
+    setupTabButton(timelineTabBtn_, WorkspaceTab::Timeline);
+    setupTabButton(synthTabBtn_,    WorkspaceTab::Synth);
+
+    addChildComponent(timelineTabBar_);
+    timelineTabBar_.setCollapsible(false);   // always a full-screen timeline
+
+    addChildComponent(synthPanel_);
+    synthPanel_.onPreview = [this](const juce::AudioBuffer<float>& buf)
+    {
+        view.previewSynthBuffer(buf);
+    };
+    synthPanel_.onExport = [this](const juce::AudioBuffer<float>& buf, const juce::String& baseName)
+    {
+        return view.exportSynthBufferToWorkspace(buf, baseName);
+    };
+
     sidebarResizer_.onDragStart = [this]
     {
         sidebarWidthAtDragStart_ = sidebarWidth_;
@@ -80,7 +108,7 @@ MainComponent::MainComponent()
     // that loads and new-scene operations do not falsely mark the scene as modified.
     view.onBlockListChanged = [this]()
     {
-        transportBar.setBlocks(view.getBlockListCopy());
+        refreshTimelines();
         if (suppressNextDirty_)
         {
             suppressNextDirty_ = false;
@@ -100,90 +128,16 @@ MainComponent::MainComponent()
 
     // ── Transport bar ─────────────────────────────────────────────────────────
 
+    // Collapse only affects the Scene-tab transport bar's height.
     transportBar.onHeightChanged = [this]()
     {
         resized();
     };
-    
-    transportBar.onPlay = [this]
-    {
-        view.setSoloSerial(-1);   // normal play hears everything
-        view.transportPlay();
-        setPlaybackUiState(true, false, view.getTransportTime());
-        transportBar.setTimelinePlaying(true);
-    };
-    transportBar.onPause = [this]
-    {
-        view.transportPause();
-        setPlaybackUiState(false, true, view.getTransportTime());
-        transportBar.setTimelinePlaying(false);
-    };
-    transportBar.onStop = [this]
-    {
-        stopPlaybackAndResetUi();
-        transportBar.setTimelinePlaying(false);
-    };
-    transportBar.onBlockEdited = [this](int serial, int occurrenceIndex, double start, double duration)
-    {
-        view.updateBlockTiming(serial, occurrenceIndex, start, duration);
-        transportBar.setBlocks(view.getBlocks());
-        auto block = view.getBlockBySerial(serial);
-        if (block)
-            sidebar.showBlockInfo(*block, view.displayNameForSerial(serial));
-        timerCallback();  // Force transport time display to update immediately, since we're changing block timing outside of the regular timer tick.
-        markDirty();                      
-    };
 
-    transportBar.onDeleteBlockOrRegion = [this](int serial, int timeIndex)
-    {
-        bool deleted = view.deleteBlockOrRegion(serial, timeIndex);
-        if (deleted)
-        {
-            transportBar.setBlocks(view.getBlocks());
-            sidebar.clearSelectedBlockIfSerial(serial);
-            timerCallback(); // Force transport time display to update immediately, since we're changing block timing outside of the regular timer tick.
-            markDirty();
-        }
-    };
-    
-    transportBar.onRegionDuplicated = [this](int serial, double start, double duration)
-    {
-        view.addTimeRangeToBlock(serial, start, duration);
-        
-        transportBar.setBlocks(view.getBlocks());
-        
-        if (auto block = view.getBlockBySerial(serial))
-            sidebar.showBlockInfo(*block, view.displayNameForSerial(serial));
-        timerCallback(); // Force transport time display to update immediately, since we're changing block timing outside of the regular timer tick.
-        markDirty();  
-    };
-    transportBar.onRegionEdited = [this](int serial, int timeIndex, double start, double duration)
-    {
-        view.updateBlockTimeRange(serial, timeIndex, start, duration);
-        
-        transportBar.setBlocks(view.getBlocks());
-        
-        if (auto block = view.getBlockBySerial(serial))
-            sidebar.showBlockInfo(*block, view.displayNameForSerial(serial));
-        timerCallback();  // Force transport time display to update immediately, since we're changing block timing outside of the regular timer tick.
-        markDirty();
-    };
-
-    transportBar.onTimelineBlockClicked = [this](int serial) { 
-        view.highlightBlock(serial);
-        auto block = view.getBlockBySerial(serial);
-        if (block)
-            sidebar.showBlockInfo(*block, view.displayNameForSerial(serial));
-
-    };
-    transportBar.onPlayheadMoved = [this](double newTimeSec)
-    {
-        view.seekTransportClock(newTimeSec);
-    };
-    transportBar.onSpeedChanged = [this](double rate)
-    {
-        view.setPlaybackRate(rate);
-    };
+    // Both the Scene-tab transport bar and the dedicated Timeline tab share the
+    // exact same behaviour (same clock, same edits), so wire them identically.
+    wireTimelineCallbacks(transportBar);
+    wireTimelineCallbacks(timelineTabBar_);
     sidebar.onApplyBlockInfo = [this](int serial, Vec3i pos, double start, double duration,
                                       bool movementEnabled, uint8_t playbackMode,
                                       double movementDurationSec, int movementYOffset,
@@ -651,24 +605,21 @@ void MainComponent::dismissStartupMenu()
     showingStartup_ = false;
     startupMenu_.setVisible(false);
 
-    view           .setVisible(true);
-    sidebar        .setVisible(true);
-    transportBar   .setVisible(true);
-    blockTypeCombo .setVisible(true);
-    typePill_      .setVisible(true);
-    fileMenuBtn_.setVisible(true);
-    viewMenuBtn_.setVisible(true);
-    muteMenuBtn_.setVisible(true);
-    layersMenuBtn_ .setVisible(true);
-    dopplerBtn_    .setVisible(true);
-    anchorBtn_     .setVisible(true);
-    pathEditBtn_   .setVisible(true);
-    freeCamBtn_    .setVisible(true);
-    freezeMovBtn_  .setVisible(true);
-    auditionBtn_       .setVisible(true);
-    auditionInTimeBtn_ .setVisible(true);
-    helpBtn_       .setVisible(true);
-    spatialSensSlider_.setVisible(true);
+    // Workspace tab strip is always visible once the app is running.
+    sceneTabBtn_.setVisible(true);
+    timelineTabBtn_.setVisible(true);
+    synthTabBtn_.setVisible(true);
+
+    // Viewport stays attached (0×0 on non-Scene tabs) so the GL loop keeps the
+    // clock, sequencer, and edit queues running without painting over tabs.
+    view.setVisible(true);
+
+    // Open on the Scene tab.
+    activeTab_ = WorkspaceTab::Scene;
+    setSceneChildrenVisible(true);
+    timelineTabBar_.setVisible(false);
+    synthPanel_.setVisible(false);
+    updateTabButtonStates();
 
     resized();
 }
@@ -758,6 +709,11 @@ void MainComponent::TypePill::paint(juce::Graphics& g)
 
 void MainComponent::timerCallback()
 {
+    // On Timeline / Synth tabs the viewport is parked off-screen at 1×1 so
+    // OpenGL stays attached (JUCE requires w/h > 0) without covering the tab UI.
+    if (activeTab_ != WorkspaceTab::Scene)
+        view.nudgeEngineLoop();
+
     const double currentTime = view.getTransportTime();
     const double duration = view.getTransportDuration();
 
@@ -769,7 +725,6 @@ void MainComponent::timerCallback()
     if (reachedEnd)
     {
         stopPlaybackAndResetUi();
-        transportBar.setBlocks(view.getBlockListCopy());
         return;
     }
 
@@ -779,7 +734,16 @@ void MainComponent::timerCallback()
         currentTime
     );
 
-    transportBar.setBlocks(view.getBlockListCopy());
+    // Keep the visible timeline bar's region list current.  Placement fires
+    // onBlockListChanged mid-frame, before the GL thread refreshes its block
+    // snapshot, so that callback can read a stale list.  A light per-tick push
+    // of the active bar guarantees the new block appears within ~33 ms.
+    auto blocks = view.getBlockListCopy();
+    if (activeTab_ == WorkspaceTab::Timeline)
+        timelineTabBar_.setBlocks(blocks);
+    else if (activeTab_ == WorkspaceTab::Scene)
+        transportBar.setBlocks(blocks);
+
     refreshSpatialSidebarReadout();
 
     // Audition buttons are only meaningful when a block is selected.  The
@@ -1186,6 +1150,50 @@ void MainComponent::resized()
 
     auto area = getLocalBounds();
 
+    // ── Workspace tab strip (always at the very top) ──────────────────────────
+    auto tabStrip = area.removeFromTop(kTabStripH);
+    {
+        const int tabW = 110;
+        int txb       = tabStrip.getX() + 6;
+        const int ty  = tabStrip.getY() + 4;
+        const int th  = kTabStripH - 6;
+        sceneTabBtn_   .setBounds(txb, ty, tabW, th); txb += tabW + 2;
+        timelineTabBtn_.setBounds(txb, ty, tabW, th); txb += tabW + 2;
+        synthTabBtn_   .setBounds(txb, ty, tabW, th); txb += tabW + 2;
+    }
+
+    // ── Non-Scene tabs fill the whole area below the tab strip ────────────────
+    // JUCE OpenGL composites above normal components AND detaches when w/h is 0,
+    // so park the viewport off-screen at 1×1: the GL loop keeps running (clock,
+    // sequencer, edit queues) without covering or intercepting the tab UI.
+    if (activeTab_ != WorkspaceTab::Scene)
+    {
+        view.setInterceptsMouseClicks(false, false);
+        view.setBounds(-1000, -1000, 1, 1);
+
+        if (activeTab_ == WorkspaceTab::Timeline)
+        {
+            timelineTabBar_.setBounds(area);
+            timelineTabBar_.setVisible(true);
+            timelineTabBar_.toFront(false);
+        }
+        else // Synth
+        {
+            synthPanel_.setBounds(area);
+            synthPanel_.setVisible(true);
+            synthPanel_.toFront(false);
+        }
+
+        // Keep the tab strip clickable above everything.
+        sceneTabBtn_.toFront(false);
+        timelineTabBtn_.toFront(false);
+        synthTabBtn_.toFront(false);
+        return;
+    }
+
+    view.setInterceptsMouseClicks(true, true);
+
+    // ── Scene tab ─────────────────────────────────────────────────────────────
     const bool collapsed = sidebar.isCollapsed();
     const int sidebarWidth = collapsed ? 50 : sidebarWidth_;
     sidebar.setBounds(area.removeFromLeft(sidebarWidth));
@@ -1392,14 +1400,17 @@ void MainComponent::setPlaybackUiState(bool playing, bool paused, double current
 {
     const double duration = view.getTransportDuration();
 
-    transportBar.setTransportState(
-        playing,
-        paused,
-        currentTime,
-        duration
-    );
-
+    transportBar.setTransportState(playing, paused, currentTime, duration);
     transportBar.setTimelinePlaying(playing);
+
+    timelineTabBar_.setTransportState(playing, paused, currentTime, duration);
+    timelineTabBar_.setTimelinePlaying(playing);
+
+    // Keep the visible transport bar repainting smoothly during playback.
+    if (activeTab_ == WorkspaceTab::Timeline)
+        timelineTabBar_.repaint();
+    else if (activeTab_ == WorkspaceTab::Scene)
+        transportBar.repaint();
 }
 
 void MainComponent::stopPlaybackAndResetUi()
@@ -1408,6 +1419,154 @@ void MainComponent::stopPlaybackAndResetUi()
     view.setSoloSerial(-1);   // clear any "Play @Time" solo
 
     setPlaybackUiState(false, false, 0.0);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Workspace tabs + shared transport
+// ─────────────────────────────────────────────────────────────────────────────
+
+void MainComponent::doTransportPlay()
+{
+    view.setSoloSerial(-1);   // normal play hears everything
+    view.transportPlay();
+    if (activeTab_ != WorkspaceTab::Scene)
+        view.nudgeEngineLoop();   // kick the engine immediately on Timeline tab
+    setPlaybackUiState(true, false, view.getTransportTime());
+}
+
+void MainComponent::doTransportPause()
+{
+    view.transportPause();
+    setPlaybackUiState(false, true, view.getTransportTime());
+}
+
+void MainComponent::doTransportStop()
+{
+    stopPlaybackAndResetUi();
+}
+
+void MainComponent::refreshTimelines()
+{
+    auto blocks = view.getBlockListCopy();
+    transportBar.setBlocks(blocks);
+    timelineTabBar_.setBlocks(blocks);
+}
+
+void MainComponent::wireTimelineCallbacks(TransportBarComponent& bar)
+{
+    bar.onPlay  = [this] { doTransportPlay();  };
+    bar.onPause = [this] { doTransportPause(); };
+    bar.onStop  = [this] { doTransportStop();  };
+
+    bar.onBlockEdited = [this](int serial, int occurrenceIndex, double start, double duration)
+    {
+        view.updateBlockTiming(serial, occurrenceIndex, start, duration);
+        refreshTimelines();
+        if (auto block = view.getBlockBySerial(serial))
+            sidebar.showBlockInfo(*block, view.displayNameForSerial(serial));
+        timerCallback();   // refresh transport readout immediately
+        markDirty();
+    };
+
+    bar.onDeleteBlockOrRegion = [this](int serial, int timeIndex)
+    {
+        if (view.deleteBlockOrRegion(serial, timeIndex))
+        {
+            refreshTimelines();
+            sidebar.clearSelectedBlockIfSerial(serial);
+            timerCallback();
+            markDirty();
+        }
+    };
+
+    bar.onRegionDuplicated = [this](int serial, double start, double duration)
+    {
+        view.addTimeRangeToBlock(serial, start, duration);
+        refreshTimelines();
+        if (auto block = view.getBlockBySerial(serial))
+            sidebar.showBlockInfo(*block, view.displayNameForSerial(serial));
+        timerCallback();
+        markDirty();
+    };
+
+    bar.onRegionEdited = [this](int serial, int timeIndex, double start, double duration)
+    {
+        view.updateBlockTimeRange(serial, timeIndex, start, duration);
+        refreshTimelines();
+        if (auto block = view.getBlockBySerial(serial))
+            sidebar.showBlockInfo(*block, view.displayNameForSerial(serial));
+        timerCallback();
+        markDirty();
+    };
+
+    bar.onTimelineBlockClicked = [this](int serial)
+    {
+        view.highlightBlock(serial);
+        if (auto block = view.getBlockBySerial(serial))
+            sidebar.showBlockInfo(*block, view.displayNameForSerial(serial));
+    };
+
+    bar.onPlayheadMoved = [this](double newTimeSec) { view.seekTransportClock(newTimeSec); };
+    bar.onSpeedChanged  = [this](double rate)       { view.setPlaybackRate(rate); };
+}
+
+void MainComponent::updateTabButtonStates()
+{
+    sceneTabBtn_   .setToggleState(activeTab_ == WorkspaceTab::Scene,    juce::dontSendNotification);
+    timelineTabBtn_.setToggleState(activeTab_ == WorkspaceTab::Timeline, juce::dontSendNotification);
+    synthTabBtn_   .setToggleState(activeTab_ == WorkspaceTab::Synth,    juce::dontSendNotification);
+}
+
+void MainComponent::setSceneChildrenVisible(bool v)
+{
+    // `view` visibility is managed in resized(): full size on Scene, 1×1
+    // off-screen on other tabs so OpenGL stays attached without covering tabs.
+    sidebar.setVisible(v);
+    transportBar.setVisible(v);
+    typePill_.setVisible(v);
+    blockTypeCombo.setVisible(v);
+    auditionBtn_.setVisible(v);
+    auditionInTimeBtn_.setVisible(v);
+    layersMenuBtn_.setVisible(v);
+    dopplerBtn_.setVisible(v);
+    anchorBtn_.setVisible(v);
+    pathEditBtn_.setVisible(v);
+    freeCamBtn_.setVisible(v);
+    freezeMovBtn_.setVisible(v);
+    spatialSensSlider_.setVisible(v);
+    helpBtn_.setVisible(v);
+    fileMenuBtn_.setVisible(v);
+    viewMenuBtn_.setVisible(v);
+    muteMenuBtn_.setVisible(v);
+    // sidebarResizer_ visibility is finalised in resized() (depends on collapse).
+    if (!v)
+        sidebarResizer_.setVisible(false);
+}
+
+void MainComponent::switchTab(WorkspaceTab t)
+{
+    if (showingStartup_)
+        return;
+
+    activeTab_ = t;
+    const bool scene = (t == WorkspaceTab::Scene);
+
+    setSceneChildrenVisible(scene);
+    timelineTabBar_.setVisible(t == WorkspaceTab::Timeline);
+    synthPanel_.setVisible(t == WorkspaceTab::Synth);
+
+    // Keep the timeline tab in sync the moment it's shown.
+    if (t == WorkspaceTab::Timeline)
+    {
+        refreshTimelines();
+        setPlaybackUiState(view.isTransportPlaying(),
+                           view.isTransportPaused(),
+                           view.getTransportTime());
+    }
+
+    updateTabButtonStates();
+    resized();
+    repaint();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

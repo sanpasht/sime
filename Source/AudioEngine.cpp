@@ -37,6 +37,11 @@ bool AudioEngine::loadSample(int soundId, const juce::File& audioFile)
     return true;
 }
 
+void AudioEngine::setSampleBuffer(int soundId, juce::AudioBuffer<float> buffer)
+{
+    sampleLibrary_[soundId] = std::move(buffer);
+}
+
 // ---------------------------------------------------------------------------
 void AudioEngine::clearSamples()
 {

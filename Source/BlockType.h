@@ -44,6 +44,9 @@ enum class BlockType
     // ── Percussion ───────────────────────────────────────────────────────
     Percussion,
 
+    /// Sound designed in the Synthesizer tab (exported WAV in workspaceAudios/).
+    Synth,
+
     _Count
 };
 
@@ -79,6 +82,7 @@ inline const char* blockTypeName(BlockType t)
         case BlockType::Trombone:      return "Trombone";
         case BlockType::Tuba:          return "Tuba";
         case BlockType::Percussion:    return "Percussion";
+        case BlockType::Synth:         return "Synth";
         case BlockType::_Count:        return "?";
     }
     return "Unknown";
@@ -119,7 +123,8 @@ inline int blockTypeDefaultSoundId(BlockType t)
         case BlockType::Piano:         return 200;
         case BlockType::Drum:          return 300;
         case BlockType::Percussion:    return 301;   // snare synth
-        case BlockType::Custom:        return -1;
+        case BlockType::Custom:
+        case BlockType::Synth:         return -1;
         // When the CSV library is unavailable, every orchestral type
         // falls back to the violin synth so placement is never silent.
         default:                       return 100;
@@ -162,6 +167,7 @@ inline juce::Colour blockTypeColor(BlockType t)
         case BlockType::Tuba:          return juce::Colour(0xff6b4f1a);  // dark gold
 
         case BlockType::Percussion:    return juce::Colour(0xff1f7042);  // forest green
+        case BlockType::Synth:         return juce::Colour(0xff9b59f6);  // synth purple
         case BlockType::_Count:        return juce::Colour(0xff888899);
     }
     return juce::Colour(0xff888899);
@@ -187,6 +193,7 @@ inline BlockCategory blockTypeCategory(BlockType t)
     switch (t)
     {
         case BlockType::Piano:         return BlockCategory::Synth;
+        case BlockType::Synth:         return BlockCategory::Synth;
 
         case BlockType::Violin:
         case BlockType::Viola:

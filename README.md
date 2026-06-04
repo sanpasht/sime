@@ -14,25 +14,26 @@ Move a block and the mix changes with **where you are listening from** (the came
 3. [Running the App](#running-the-app)
 4. [Controls](#controls)
 5. [Toolbar](#toolbar)
-6. [Block Info Panel](#block-info-panel)
-7. [Transport](#transport)
-8. [Workflow](#workflow)
-9. [Block Movement Recording](#block-movement-recording)
-10. [Block Playback Modes (Natural / Loop / Stretch / Speed)](#block-playback-modes-natural--loop--stretch--speed)
-11. [Mute, Hide, and Type Filters](#mute-hide-and-type-filters)
-12. [Audio Analysis (frequency & oscilloscope)](#audio-analysis-frequency--oscilloscope)
-13. [Doppler Effect](#doppler-effect)
-14. [Save / Load Scenes](#save--load-scenes)
-15. [Export Audio](#export-audio)
-16. [Audio Architecture](#audio-architecture)
-17. [Project Structure](#project-structure)
-18. [Where to Change Things](#where-to-change-things)
-19. [Known Bugs & Issues](#known-bugs--issues)
-20. [Audio library (detailed report)](md%20files/AUDIO_LIBRARY_REPORT.md) — 23 block types, CSV index, lazy-loaded WAV picker
-21. [Export audio (detailed report)](md%20files/EXPORT_AUDIO_REPORT.md) — Offline bounce, formats, limitations
-22. [Session 2026-05-23 (detailed report)](md%20files/SESSION_2026-05-23_REPORT.md) — Export, movement, gizmos, audio analysis, Doppler, mute / hide / type filters, loop overhaul, persistence v6→v7→v8
-23. [Testing scenarios](md%20files/TESTING_SCENARIOS.md) — Cross-feature user-story playbook (duration ↔ sound, movement, loop, mute schedule) + UX improvement suggestions
-24. [Session 2026-06-03 (detailed report)](md%20files/SESSION_2026-06-03_REPORT.md) — Selected-block audition, per-block freeze, Fit sound ↔ movement, path resampling, **Sound Schedule** (timed sounds + per-sound loop/gap), **multi-segment movement**, per-segment looping, per-sound movement binding, resizable sidebar, persistence v11→v14
+6. [Workspace Tabs](#workspace-tabs)
+7. [Block Info Panel](#block-info-panel)
+8. [Transport](#transport)
+9. [Workflow](#workflow)
+10. [Block Movement Recording](#block-movement-recording)
+11. [Block Playback Modes (Natural / Loop / Stretch / Speed)](#block-playback-modes-natural--loop--stretch--speed)
+12. [Mute, Hide, and Type Filters](#mute-hide-and-type-filters)
+13. [Audio Analysis (frequency & oscilloscope)](#audio-analysis-frequency--oscilloscope)
+14. [Doppler Effect](#doppler-effect)
+15. [Save / Load Scenes](#save--load-scenes)
+16. [Export Audio](#export-audio)
+17. [Audio Architecture](#audio-architecture)
+18. [Project Structure](#project-structure)
+19. [Where to Change Things](#where-to-change-things)
+20. [Known Bugs & Issues](#known-bugs--issues)
+21. [Audio library (detailed report)](md%20files/AUDIO_LIBRARY_REPORT.md) — 24 block types, CSV index, lazy-loaded WAV picker
+22. [Export audio (detailed report)](md%20files/EXPORT_AUDIO_REPORT.md) — Offline bounce, formats, limitations
+23. [Session 2026-05-23 (detailed report)](md%20files/SESSION_2026-05-23_REPORT.md) — Export, movement, gizmos, audio analysis, Doppler, mute / hide / type filters, loop overhaul, persistence v6→v7→v8
+24. [Testing scenarios](md%20files/TESTING_SCENARIOS.md) — Cross-feature user-story playbook (duration ↔ sound, movement, loop, mute schedule) + UX improvement suggestions
+25. [Session 2026-06-03 (detailed report)](md%20files/SESSION_2026-06-03_REPORT.md) — Sound Schedule, movement refinements, **workspace tabs** (Scene / Timeline / Synthesizer), subtractive synth + **Synth block type**, persistence v14
 
 ---
 
@@ -218,7 +219,7 @@ The toolbar at the top of the viewport lays out left-to-right as:
 | UI | What it does |
 |----|----------------|
 | **Color pill** | Shows the active instrument name and a swatch in that type’s color. |
-| **Dropdown** | Picks one of **23 block types** grouped by category (Synth, Strings, Woodwinds, Brass, Percussion, Special). This is what the next `LMB` placement will create. |
+| **Dropdown** | Picks one of **24 block types** grouped by category (Synth, Strings, Woodwinds, Brass, Percussion, Special). This is what the next `LMB` placement will create. |
 | **Play** | Audition the selected block's sound right now.  Time-aware: previews whichever sound the block would be making at the current playhead (the latest scheduled sound that has started, else the block's main sound).  Enabled only when a block is selected. |
 | **@Time** | Move the playhead to the selected block's start time so blocks + camera snap to that moment.  Does **not** start playback — press Play yourself. |
 
@@ -264,6 +265,29 @@ The app also auto-saves to `%APPDATA%/SIME/autosave.sime` when you close it.
 Auto-load on launch was removed so **New Scene always starts empty** —
 use `File → Open Scene…` or your OS file association to load the auto-save
 manually if you want it back.
+
+---
+
+## Workspace Tabs
+
+Three tabs across the top of the window switch the whole workspace:
+
+| Tab | What you get |
+|-----|--------------|
+| **Scene** | The original 3D editor — sidebar, toolbar, viewport, and collapsible transport bar at the bottom. |
+| **Timeline** | A full-screen DAW-style timeline (same transport + region editing as the Scene tab bar). Play, scrub, speed, BPM, and region edits stay in sync with Scene. |
+| **Synthesizer** | A subtractive synth for designing sounds offline, previewing them, and exporting WAVs into `workspaceAudios/`. |
+
+### Synthesizer tab workflow
+
+1. Open the **Synthesizer** tab.
+2. Tweak **waveform**, **note**, **ADSR**, **filter**, **level**, and **duration**.
+3. Click **Preview** to hear the patch through the main audio engine.
+4. Enter a filename and click **Export WAV** — the file lands in `Source/workspaceAudios/` and appears in the sidebar **Audio** list.
+5. Switch to **Scene**, pick **Synth** from the type dropdown, place a block.
+6. **Right-click** the block → assign the exported WAV (same browse flow as **Custom** blocks).
+
+The **Synth** block type (purple) behaves like **Custom**: it starts silent until a workspace WAV is assigned, then plays that sample in the sequencer with full spatial audio.
 
 ---
 
@@ -760,7 +784,7 @@ SIME/
 ├── JUCE/                          # JUCE framework (cloned separately)
 └── Source/
     ├── Main.cpp                   # App entry point
-    ├── MainComponent.cpp/h        # Top-level layout (sidebar + viewport + transport)
+    ├── MainComponent.cpp/h        # Top-level layout (tabs, sidebar + viewport + transport)
     ├── ViewPortComponent.cpp/h    # 3D OpenGL viewport, input, sequencer loop
     ├── Renderer.cpp/h             # OpenGL batch renderer (blocks, grid, highlights)
     ├── Camera.cpp/h               # First-person camera + view snapping
@@ -768,7 +792,7 @@ SIME/
     ├── VoxelGrid.h                # Sparse voxel data structure
     ├── MathUtils.h                # Vec3i, Vec3f, Mat4
     ├── BlockEntry.h               # Shared block data struct (incl. mute, hide, loop gap, mute window)
-    ├── BlockType.h                # Block type enum + helpers
+    ├── BlockType.h                # Block type enum + helpers (incl. Synth)
     ├── SequencerEvent.h           # Event value type (Start/Stop/Movement) — carries velocity for Doppler
     ├── AudioEngine.cpp/h          # JUCE audio engine — atomic pause/stop, listener pos, Doppler, loop gap
     ├── AudioAnalysis.cpp/h        # Offline F0 estimate + waveform envelope for the sidebar
@@ -776,6 +800,9 @@ SIME/
     ├── TransportClock.cpp/h       # Playback clock (with playbackRate)
     ├── SidebarComponent.cpp/h     # Left-side block info panel — scrollable, embeds analyzer + movement graph
     ├── TransportBarComponent.cpp/h # Bottom play/pause/stop bar + speed dropdown
+    ├── SynthPatch.h               # Synth parameter struct (osc / ADSR / filter)
+    ├── SynthRenderer.cpp/h        # Offline subtractive render + WAV writer
+    ├── SynthComponent.cpp/h       # Full-screen Synthesizer tab UI
     ├── BlockEditPopup.cpp/h       # Floating block edit dialog (timing + sound only; loop UI lives in Info)
     ├── MovementConfirmPopup.h     # Movement recording confirm dialog
     ├── SoundSchedulePopup.cpp/h   # Two-pane editor for per-block timed sounds (start/dur/loop/gap + picker)

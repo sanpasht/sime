@@ -11,6 +11,7 @@
 #include "SceneAudioExporter.h"
 #include "CameraPathPopup.h"
 #include "HelpPopup.h"
+#include "SynthComponent.h"
 
 class MainComponent : public juce::Component, private juce::Timer
 {
@@ -42,6 +43,39 @@ private:
     TransportBarComponent transportBar;
     std::unique_ptr<MovementConfirmPopup> movementPopup;
     bool isSidebarCollapsed = false;
+
+    // ── Workspace tabs (Scene / Timeline / Synthesizer) ───────────────────────
+    // A thin tab strip at the very top switches the whole workspace.  The Scene
+    // tab is the original 3D editor (sidebar + toolbar + viewport + transport).
+    // The Timeline tab is a dedicated full-screen DAW timeline (a second
+    // TransportBarComponent forced expanded).  The Synth tab hosts the
+    // synthesizer (placeholder until E2).
+    enum class WorkspaceTab { Scene = 0, Timeline = 1, Synth = 2 };
+    WorkspaceTab activeTab_ = WorkspaceTab::Scene;
+
+    juce::TextButton sceneTabBtn_    { "Scene" };
+    juce::TextButton timelineTabBtn_ { "Timeline" };
+    juce::TextButton synthTabBtn_    { "Synthesizer" };
+
+    /// Full-screen timeline shown on the Timeline tab.  Reuses the transport bar
+    /// component (forced non-collapsible) so it shares all timeline behaviour.
+    TransportBarComponent timelineTabBar_;
+
+    /// Synthesizer editor on the Synth tab.
+    SynthComponent synthPanel_;
+
+    static constexpr int kTabStripH = 32;
+
+    void switchTab(WorkspaceTab t);
+    void setSceneChildrenVisible(bool v);
+    void updateTabButtonStates();
+    void wireTimelineCallbacks(TransportBarComponent& bar);
+
+    // Shared transport actions so both transport bars drive the same clock.
+    void doTransportPlay();
+    void doTransportPause();
+    void doTransportStop();
+    void refreshTimelines();   ///< push the current block list to both bars
 
     // ── User-resizable sidebar ────────────────────────────────────────────────
     int  sidebarWidth_ = 220;               ///< current expanded width (px)

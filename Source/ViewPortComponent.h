@@ -376,6 +376,16 @@ public:
     void refreshWorkspaceAudioPanel();
     juce::File getWorkspaceAudioDir() const;
 
+    /// Preview a rendered synth buffer through the main audio engine (mono).
+    void previewSynthBuffer(const juce::AudioBuffer<float>& buffer);
+
+    /// Write buffer to workspaceAudios/ and refresh the sidebar audio list.
+    /// Returns a portable relative path ("workspaceAudios/foo.wav") or empty.
+    juce::String exportSynthBufferToWorkspace(const juce::AudioBuffer<float>& buffer,
+                                              const juce::String& baseName);
+
+    static constexpr int kSynthPreviewSoundId = 9998;
+
     // ── Per-type indefinite mute (toolbar Mute menu) ───────────────────────
     void setBlockTypeMuted(BlockType t, bool muted)
     {
@@ -527,6 +537,10 @@ public:
 
     void seekTransportClock(double newTimeSec);
     void addTimeRangeToBlock(int serial, double start, double duration);
+
+    /// While the viewport is 0×0 (Timeline / Synth tabs), nudge the GL loop so
+    /// transport + sequencer keep advancing.  Safe on the message thread.
+    void nudgeEngineLoop();
 
     void updateBlockTimeRange(int serial,
                             int timeIndex,
