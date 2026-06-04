@@ -37,6 +37,11 @@ public:
     void resized() override;
     void setTimelinePlaying(bool playing);
 
+    /// When false, the collapse button is hidden and the bar is forced to its
+    /// expanded (full timeline) state.  Used by the dedicated Timeline tab,
+    /// which is always a full-screen timeline.
+    void setCollapsible(bool canCollapse);
+
     int getPreferredHeight() const
     {
         return isCollapsed_ ? kControlHeight : kExpandedHeight;

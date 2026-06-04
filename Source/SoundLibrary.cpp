@@ -187,7 +187,7 @@ int SoundLibrary::entryForSoundId(int soundId) const
 
 int SoundLibrary::defaultSoundForBlockType(BlockType t, AudioEngine& engine)
 {
-    if (t == BlockType::Custom)
+    if (t == BlockType::Custom || t == BlockType::Synth)
         return -1;
 
     const auto& indices = indicesFor(t);

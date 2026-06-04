@@ -3,6 +3,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 #include "ViewPortComponent.h"
+#include "SynthRenderer.h"
 #include <juce_opengl/juce_opengl.h>
 using namespace juce::gl;
 #include <algorithm>
@@ -3846,6 +3847,14 @@ ViewPortComponent::ExportListenerInfo ViewPortComponent::getExportListenerInfo()
     return info;
 }
 
+void ViewPortComponent::nudgeEngineLoop()
+{
+    // Keep the GL render loop alive while the viewport is parked at 1×1
+    // off-screen (Timeline / Synth tabs).  JUCE detaches the context when
+    // width or height is zero, which would freeze transport + sequencer.
+    openGLContext.triggerRepaint();
+}
+
 void ViewPortComponent::seekTransportClock(double newTimeSec)
 {
     transportClock.seekTo(newTimeSec);
@@ -4043,6 +4052,44 @@ juce::File ViewPortComponent::copyAudioToWorkspace(const juce::File& sourceFile)
         return {};
 
     return targetFile;
+}
+
+
+void ViewPortComponent::previewSynthBuffer(const juce::AudioBuffer<float>& buffer)
+{
+    if (buffer.getNumSamples() <= 0)
+        return;
+
+    audioEngine.setSampleBuffer(kSynthPreviewSoundId, buffer);
+
+    SequencerEvent startEv;
+    startEv.type        = SequencerEventType::Start;
+    startEv.blockSerial = kSynthPreviewSoundId;
+    startEv.soundId     = kSynthPreviewSoundId;
+    startEv.blockX = startEv.blockY = startEv.blockZ = 0.0f;
+    audioEngine.processEvents({ startEv });
+}
+
+juce::String ViewPortComponent::exportSynthBufferToWorkspace(
+    const juce::AudioBuffer<float>& buffer,
+    const juce::String& baseName)
+{
+    if (buffer.getNumSamples() <= 0)
+        return {};
+
+    auto dir = getWorkspaceAudioDir();
+    dir.createDirectory();
+
+    juce::String safe = baseName.trim();
+    if (safe.isEmpty())
+        safe = "synth_patch";
+
+    juce::File target = dir.getNonexistentChildFile(safe, ".wav");
+    if (!SynthRenderer::writeWav(buffer, target, audioEngine.getOutputSampleRate()))
+        return {};
+
+    refreshWorkspaceAudioPanel();
+    return "workspaceAudios/" + target.getFileName();
 }
 
 

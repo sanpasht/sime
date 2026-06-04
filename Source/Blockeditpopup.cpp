@@ -172,14 +172,16 @@ void BlockEditPopup::showAt(int blockSerial, BlockType type,
     incomingLoopDurationSec = loopDurationSec;
 
     const bool isCustom = (type == BlockType::Custom);
+    const bool isSynth  = (type == BlockType::Synth);
+    const bool usesFile = isCustom || isSynth;
 
-    soundLabel  .setVisible(!isCustom);
-    soundPicker .setVisible(!isCustom);
-    fileLabel   .setVisible(isCustom);
-    fileField   .setVisible(isCustom);
-    browseButton.setVisible(isCustom);
+    soundLabel  .setVisible(!usesFile);
+    soundPicker .setVisible(!usesFile);
+    fileLabel   .setVisible(usesFile);
+    fileField   .setVisible(usesFile);
+    browseButton.setVisible(usesFile);
 
-    if (isCustom)
+    if (usesFile)
     {
         customFilePath_ = customFile;
         fileField.setText(customFile, false);
@@ -233,7 +235,7 @@ void BlockEditPopup::commit()
     int          newSoundId  = -1;
     juce::String newCustomFile;
 
-    if (editingType == BlockType::Custom)
+    if (editingType == BlockType::Custom || editingType == BlockType::Synth)
     {
         newCustomFile = customFilePath_;
     }
