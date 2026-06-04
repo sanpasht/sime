@@ -309,20 +309,177 @@ the sound duration manually, and assigning a new sound still auto-fits to
 
 ---
 
-## 8. What's still queued
+## 8. Ambitious Feature E — Workspace tabs, Timeline tab, Synthesizer
 
-- **E1 — Tab bar + full-screen Timeline tab.**  A "Scene" tab (current view) plus
-  a dedicated, FL/Ableton-style full-screen Timeline tab that can play, scrub,
-  and speed up.  The timeline already understands scheduled sounds via
-  `getTransportDuration()` and `setBlocks()`.
-- **E2 — Synthesizer tab + render-to-WAV + Synth block type.**  A standard
-  subtractive synth that exports a WAV the user can assign to a new "Synth" block
-  type (same flow as Custom blocks).
-- **Docs** — keep this report + README current as E lands.
+This is the headline feature of the session: the app gains a **workspace tab
+bar** (Scene / Timeline / Synthesizer), a dedicated full-screen DAW-style
+**Timeline** tab, and a fully styled **Synthesizer** tab that designs sounds,
+renders them to WAV, and feeds a brand-new **Synth block type**.
+
+### 8.1 Workspace tab architecture
+
+`MainComponent` owns a `WorkspaceTab { Scene, Timeline, Synth }` enum and a thin
+top strip of three buttons (`sceneTabBtn_`, `timelineTabBtn_`, `synthTabBtn_`).
+`switchTab()` drives everything:
+
+- `setSceneChildrenVisible(scene)` shows/hides the Scene toolbar, sidebar,
+  resizer and bottom transport bar.
+- `timelineTabBar_` (a second `TransportBarComponent`) is shown only on Timeline.
+- `synthPanel_` (a `SynthComponent`) is shown only on Synth.
+- `resized()` lays out exactly one tab's content below the strip.
+
+**The OpenGL gotcha (critical).** The 3D viewport's `renderOpenGL()` loop is
+what advances the transport clock, fires sequencer audio events, and drains the
+pending-edit queues. JUCE composites OpenGL **above** normal components, and it
+**detaches the context when the target's width or height is 0**. So the viewport
+cannot simply be hidden or sized 0×0 on the Timeline/Synth tabs — that freezes
+playback and edits.
+
+Fix: on non-Scene tabs the viewport is **parked off-screen at 1×1**
+(`view.setBounds(-1000,-1000,1,1)` + `setInterceptsMouseClicks(false,false)`),
+which keeps the GL context attached and the engine ticking without covering or
+intercepting the tab UI. `timerCallback()` also calls `view.nudgeEngineLoop()`
+(`openGLContext.triggerRepaint()`) each tick on those tabs so the loop keeps
+running at a steady cadence.
+
+### 8.2 Timeline tab
+
+The Timeline tab reuses `TransportBarComponent` so it shares 100% of the Scene
+bar's behaviour. `TransportBarComponent::setCollapsible(false)` hides the
+collapse button and forces the full-height timeline.
+
+Both bars are wired through one helper, `wireTimelineCallbacks(bar)`, so play /
+pause / stop / speed / BPM / seek / region drag-resize / duplicate / delete all
+route to the **same** `ViewPortComponent` transport clock and edit queues:
+
+- `doTransportPlay/Pause/Stop()` — shared transport actions.
+- `setPlaybackUiState()` pushes `(playing, paused, time, duration)` to **both**
+  bars every tick and repaints the active one, so the playhead animates smoothly
+  and the two tabs stay in sync when you switch mid-playback.
+- `refreshTimelines()` / the per-tick active-bar `setBlocks()` keep region data
+  current (see bug log for the stale-snapshot fix).
+
+Region delete on the timeline is the right-click → **Delete** menu inside
+`TimelineComponent`; it fires `onDeleteBlockOrRegion` → `view.deleteBlockOrRegion()`.
+
+### 8.3 Synthesizer tab — architecture
+
+The synth is **offline-first**. Nothing new runs on the audio thread:
+
+```
+SynthPatch  ──►  SynthRenderer::render()  ──►  juce::AudioBuffer<float> (mono)
+                                               │
+                       ┌───────────────────────┴───────────────────────┐
+                       ▼                                                ▼
+   AudioEngine::setSampleBuffer(previewId, buf)        SynthRenderer::writeWav(buf, file)
+   → processEvents(Start) → audible preview            → workspaceAudios/<name>.wav
+```
+
+**`SynthPatch`** (`SynthPatch.h`) is a plain struct: `waveform`
+(Sine/Square/Saw/Triangle), `midiNote`, `durationSec`, ADSR (`attack/decay/
+sustain/release`), `filterCutoffHz`, `filterResonance`, `masterGain`, plus a
+`midiToHz()` helper.
+
+**`SynthRenderer`** (`SynthRenderer.cpp/h`) is pure DSP, no JUCE component deps:
+- Band-naive oscillator (sine/square/saw/triangle) per sample.
+- A sample-accurate **ADSR** state machine (`Attack→Decay→Sustain→Release→Done`),
+  rendering the held `durationSec` then the release tail; the buffer is trimmed
+  the moment the envelope reaches zero and gets a short anti-click fade.
+- A **TPT 2-pole resonant low-pass filter** (`resonance` maps to Q 0.707…8).
+- `writeWav()` writes 16-bit PCM via `juce::WavAudioFormat` + `FileOutputStream`.
+
+### 8.4 Synthesizer tab — UI (`SynthComponent`)
+
+A full cyberpunk / dark-techno surface modelled on a reference mockup. Built
+from reusable, custom-painted pieces:
+
+| Class | Role |
+|-------|------|
+| `SynthLookAndFeel` | Glowing layered-arc rotary knobs, neon vertical bar sliders, dark combo styling; per-control accent colour read from a `"accent"` component property |
+| `SynthPanel` | Dark rounded panel with an accent header strip + underline |
+| `KnobCell` / `BarCell` | Rotary knob / vertical bar + caption |
+| `WaveThumb` | Mini oscillator/LFO waveform preview (sine/square/saw/tri/random/noise) |
+| `EnvCurve` | Live ADSR curve drawn from the four amp sliders |
+| `FilterCurve` | Live low-pass response drawn from cutoff + resonance |
+| `StepBars` | Arp/seq step visualiser |
+| `XYPad` | Performance / aftertouch pad |
+| `LevelMeter` | Master meter |
+| `MiniKeyboard` | 3-octave click keyboard; calls back the MIDI note |
+
+Layout is proportional: every panel/control is placed from reference coordinates
+scaled by `getWidth()/1024 × getHeight()/600`, so it keeps its arrangement at
+any window size. Panels are painted behind, controls placed on top as siblings.
+
+Panels: **Oscillators** (OSC 1/2/3 + Sub + Noise), **Mixer**, **Amp Envelope**,
+**Filter**, **Modulation** (LFO 1/2), **Effects** (Chorus/Delay/Reverb/
+Distortion), **Voice** (LFO 3), **Mod Matrix**, **Arp/Seq**, **Performance**,
+**Master** (+ meter), **Macro**, plus pitch/mod wheels and the header
+(SIME logo, SYNTHESIZER title, **Enter File Name** field, **Preview**,
+**Export WAV**, status line).
+
+**Functional vs decorative.** To keep the renderer focused, these controls drive
+real sound: OSC 1 **waveform**, the four **ADSR** bars, **Filter Cutoff + Res**,
+**Master** level, and the **keyboard** (click a key → set note → preview). The
+remaining panels (OSC 2/3, Sub/Noise, Mixer, LFOs, Effects, Voice, Mod Matrix,
+Arp/Seq, Performance, Macros, wheels) are styled performance surfaces that
+complete the instrument's look and are interactive but not yet wired to DSP —
+a clean extension point.
+
+**Header note.** The reference's `SYNTH / FX / MATRIX / PRESETS` tabs were
+removed — they were decorative and we have no such sub-screens (effects and the
+mod matrix already live inline; there is no preset database). The header now
+reads **SYNTHESIZER** in full.
+
+### 8.5 Synth block type
+
+`BlockType::Synth` is appended **before `_Count`** so existing `.sime` files
+(blockType stored as uint8) stay loadable — no `SceneFile` version bump needed.
+
+- `blockTypeName/DisplayName` → "Synth"; `blockTypeColor` → synth purple.
+- `blockTypeCategory` → `BlockCategory::Synth`; appears in the toolbar dropdown.
+- `blockTypeDefaultSoundId` → `-1` and `SoundLibrary::defaultSoundForBlockType`
+  returns `-1` (silent until assigned), exactly like **Custom**.
+- `BlockEditPopup` treats Synth like Custom: hides the library picker, shows the
+  **Browse File** flow; the chosen WAV is copied into `workspaceAudios/` and the
+  portable `customFilePath` is stored.
+- `BlockEntry::getBlockColor` gives Synth blocks the same per-`soundId` palette
+  variation as Custom so different patches read as distinct blocks.
+
+### 8.6 Audio engine additions
+
+- `AudioEngine::setSampleBuffer(int soundId, juce::AudioBuffer<float>)` — register
+  an in-memory buffer in the sample library (used for synth preview, id `9998`).
+- `ViewPortComponent::previewSynthBuffer()` — loads the preview buffer and fires
+  a `Start` event at the origin.
+- `ViewPortComponent::exportSynthBufferToWorkspace()` — writes the buffer to
+  `workspaceAudios/<name>.wav` (dedup via `getNonexistentChildFile`), refreshes
+  the sidebar **Audio** list, and returns the portable relative path.
 
 ---
 
-## 9. How to extend
+## 9. Bug log — tab/timeline/synth
+
+| Symptom | Root cause | Fix |
+|---------|-----------|-----|
+| Play on Timeline tab did nothing; scene played but Timeline didn't | viewport was hidden/0×0 on non-Scene tabs, detaching the GL context that drives the transport clock + sequencer | park viewport at 1×1 off-screen; `nudgeEngineLoop()` each tick |
+| Timeline + Synth tabs showed the 3D scene | OpenGL composites above normal components; can't be covered | hide by parking off-screen, not by z-order |
+| Timeline playhead only moved when switching tabs | clock frozen on Timeline tab (same root cause) | as above + push playhead to both bars every tick |
+| Newly placed block didn't show on the Scene timeline until a tab switch | placement fires `onBlockListChanged` mid-frame, before the GL thread refreshes `blockListSnapshot_`, so the callback read a stale list | light per-tick `setBlocks()` of the active bar in `timerCallback()` |
+| `EXPORT WAV` overlapped the Master meter; header felt unbalanced | header coordinates | recentred the file-name/Preview/Export group and nudged SIME/SYNTHESIZER down |
+
+---
+
+## 10. What's still queued
+
+- **Synth DSP depth** — wire the decorative panels into the renderer: dual/triple
+  oscillators + mix, sub & noise, LFO 1–3 modulation routing (mod matrix),
+  effects (chorus/delay/reverb/distortion), macros, glide, velocity/pressure.
+- **Sustained keyboard** — hold-to-sustain + polyphonic preview.
+- **Patch save/load** — serialise `SynthPatch` so designed sounds can be recalled.
+
+---
+
+## 11. How to extend
 
 - **A new scheduled-sound property** → add the field to `SoundEvent`, bump
   `SceneFile::kVersion`, write/read it inside the schedule loop (guard load with

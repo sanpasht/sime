@@ -267,6 +267,59 @@ manually if you want it back.
 
 ---
 
+## Workspace Tabs
+
+Three tabs across the top of the window switch the whole workspace:
+
+| Tab | What you get |
+|-----|--------------|
+| **Scene** | The original 3D editor — sidebar, toolbar, viewport, and collapsible transport bar at the bottom. |
+| **Timeline** | A full-screen DAW-style timeline (same transport + region editing as the Scene tab bar). Play, scrub, speed, BPM, and region edits stay in sync with Scene. |
+| **Synthesizer** | A subtractive synth for designing sounds offline, previewing them, and exporting WAVs into `workspaceAudios/`. |
+
+> **Why the 3D view keeps working off-tab:** the viewport's OpenGL loop drives
+> the transport clock, sequencer, and edit queues. JUCE detaches an OpenGL
+> context the moment its component is hidden or sized 0×0, so on the Timeline /
+> Synthesizer tabs the viewport is parked **1×1 off-screen** instead — the engine
+> keeps ticking, it just isn't drawn. This is why playback stays in sync when you
+> switch tabs mid-song.
+
+### The Synthesizer tab
+
+A dark-techno / cyberpunk subtractive synth. The layout (oscillators, mixer,
+amp envelope, filter, modulation/LFOs, effects, voice, mod matrix, arp/seq,
+performance, master, macros, keyboard) is modelled on a hardware-style mockup
+and scales to the window.
+
+**Controls wired to sound:** OSC 1 **waveform**, the **A / D / S / R** bars,
+**Filter Cutoff + Resonance**, **Master** level, and the **on-screen keyboard**
+(click a key to audition that note). The remaining panels (extra oscillators,
+LFOs, effects, mod matrix, macros, etc.) are styled performance surfaces — fully
+interactive visually, not yet routed into the DSP (a deliberate extension point).
+
+#### Workflow
+
+1. Open the **Synthesizer** tab.
+2. Shape the sound: pick the OSC 1 **waveform**, set **A/D/S/R**, dial in
+   **Cutoff/Res**, set **Master** level.
+3. Click a **keyboard** key (or **Preview**) to hear the patch.
+4. Type a name in **Enter File Name**, click **Export WAV** — the file lands in
+   `Source/workspaceAudios/` and appears in the sidebar **Audio** list.
+5. Switch to **Scene**, pick **Synth** from the type dropdown, place a block.
+6. **Right-click** the block → **Browse File** → assign the exported WAV (same
+   flow as **Custom** blocks).
+
+The **Synth** block type (purple) behaves like **Custom**: silent until a
+workspace WAV is assigned, then played by the sequencer with full spatial audio.
+
+#### A quick patch to try
+
+- **Bass:** OSC 1 = **Saw**, A≈0.01, D≈0.25, S≈0.5, R≈0.3, Cutoff low
+  (~600–900 Hz), Res≈0.4, Master≈0.8 → click a **low** key.
+- **Lead:** OSC 1 = **Square**, push Cutoff up for brightness → click a higher key.
+
+---
+
 ## Block Info Panel
 
 Selecting a block (LMB in normal mode) opens the Block Info panel on the
