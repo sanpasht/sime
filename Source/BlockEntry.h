@@ -44,6 +44,33 @@ struct MuteWindow
     }
 };
 
+/// A single scheduled sound for a block.  Distinct from looping and from the
+/// block's main region: it plays the given sound (which must belong to the
+/// block's instrument type) once, starting at `startSec`, optionally cut at
+/// `startSec + durationSec`.  A block may carry any number of these so it can
+/// play e.g. note A at 5s and note B at 45s.  See `BlockEntry::soundSchedule`
+/// and the Sound Schedule popup.
+struct SoundEvent
+{
+    double      startSec    = 0.0;
+    double      durationSec = 1.0;   ///< play window; sample is cut at the end if longer
+    int         soundId     = -1;    ///< runtime sound id (resolved from relativePath)
+    std::string relativePath;        ///< library-relative path, used to persist + reload
+
+    /// When true the scheduled sound loops (seamlessly via the audio-thread loop
+    /// buffer) for the whole [startSec, endSec) window, with `loopGapSec` seconds
+    /// of silence inserted between repeats (0 = tight loop).  Mirrors the block's
+    /// own Loop mode but scoped to this single scheduled note.  Persisted.
+    bool        loop        = false;
+    double      loopGapSec  = 0.0;
+
+    // ── Runtime-only sequencer state (NOT persisted) ─────────────────────────
+    bool started  = false;
+    bool finished = false;
+
+    double endSec() const noexcept { return startSec + std::max(0.05, durationSec); }
+};
+
 /// Per-block playback behaviour for the WAV vs the block's region duration.
 ///
 /// Natural  – sound plays once; if shorter than the region, the rest is silent.
@@ -74,6 +101,19 @@ inline const char* blockPlaybackModeName(BlockPlaybackMode m) noexcept
     }
     return "Natural";
 }
+
+/// One-shot duration/movement reconciliation actions, applied from the sidebar
+/// when a block's sound length and movement length disagree.  Each sets a
+/// combination of region duration, movement duration and playbackMode so the
+/// sequencer (which already fits sound to region via Stretch/Speed and movement
+/// to effectiveMovementDuration) produces the intended behaviour.
+enum class DurationSyncAction : uint8_t
+{
+    MatchDurationToSound = 0,  ///< region = sound length (existing "Match" button)
+    DistortSoundToMovement,    ///< speed/slow the SOUND to fit the movement length (audio affected -> warn)
+    DistortMovementToSound,    ///< stretch/compress the MOVEMENT to the sound length (audio natural)
+    HardCutAtMovement          ///< region = movement length; sound plays natural and is cut at the end
+};
 
 struct TimeRange
 {
@@ -163,9 +203,35 @@ struct BlockEntry
     double recordingStartTime = 0.0;
     Vec3i recordingStartPos;
 
+    /// Multi-segment recording (runtime only).  When the user records a movement
+    /// while the playhead is past the block's start, the new keyframes are spliced
+    /// into the existing path at this block-relative offset instead of replacing
+    /// it.  `recordedMovementBackup` keeps the prior path so Cancel can restore it.
+    double recordingTimeOffset = 0.0;
+    std::vector<MovementKeyFrame> recordedMovementBackup;
+
     // recorded movement data
     bool hasRecordedMovement = false; ///< Block has a saved movement path (keyframes on disk)
     bool movementEnabled     = true;  ///< When false, path is kept but not played during transport
+
+    /// When true the recorded movement path loops: at the end of the path the
+    /// block instantly teleports back to its first keyframe (start position) and
+    /// replays, repeating until the region ends.  This is the ONLY situation in
+    /// which a block is allowed to teleport — normal playback always steps along
+    /// the path.  Persisted.
+    bool movementLoop = false;
+    /// Runtime loop counter used to detect path wraps so we can re-arm the
+    /// keyframe triggers each loop (NOT persisted).
+    int  movementLoopIndex = 0;
+
+    /// Runtime-only per-block movement freeze (NOT persisted).  When true this
+    /// single block holds its current position during playback even if it has a
+    /// path — same semantics as the global "Freeze Move" toolbar toggle, but
+    /// scoped to one block (sidebar "Freeze this block" toggle).  Un-freezing
+    /// resumes motion from the current transport time.
+    bool movementFrozen      = false;
+    /// GL-thread transition tracker for movementFrozen / global freeze (runtime).
+    bool wasMovementFrozen   = false;
     std::vector<MovementKeyFrame> recordedMovement; ///< Optional per-block movement path for sequenced motion
     bool durationLocked = false;
 
@@ -195,6 +261,11 @@ struct BlockEntry
     /// playhead is inside [startSec, startSec + durationSec).  Empty list =
     /// no scheduled mutes (the "Mute (forever)" toggle is independent).
     std::vector<MuteWindow> muteWindows;
+
+    /// User-defined sound schedule.  Each entry plays a sound (of this block's
+    /// type) at its startSec.  Lets one block fire several different notes over
+    /// time (e.g. violin A at 5s, violin B at 45s) without extra blocks.
+    std::vector<SoundEvent> soundSchedule;
 
     /// Returns true if `t` falls inside any of the active mute windows.
     bool isInsideAnyMuteWindow(double t) const noexcept
@@ -285,6 +356,14 @@ struct BlockEntry
         {
             triggeredKeyframes.resize(recordedMovement.size(), false);
         }
+
+        for (auto& se : soundSchedule)
+        {
+            se.started  = false;
+            se.finished = false;
+        }
+
+        movementLoopIndex = -1;
     }
 
     /// User-facing display name like "Violin 1", "Piano 3".

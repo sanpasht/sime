@@ -416,6 +416,10 @@ bool bounceToFile(const std::vector<BlockEntry>&                            bloc
             : 0.0;
     }
 
+    // Start every block (and its scheduled sounds) from a clean slate so the
+    // offline render fires the same events the live transport would from t=0.
+    SequencerEngine::resetAllBlocks(blocks);
+
     SequencerEngine sequencer;
     std::vector<MixerVoice> voices;
     voices.reserve(64);

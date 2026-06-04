@@ -14,6 +14,18 @@
 class SequencerEngine
 {
 public:
+    /// Scheduled sounds (BlockEntry::soundSchedule) play on synthetic voice
+    /// serials so a Stop for the block's real region never cuts them.  A unique
+    /// serial per (block, entry) keeps them independent of one another too.
+    static constexpr int kScheduledSerialBase = 2'000'000;
+    static constexpr int kMaxScheduledPerBlock = 1'000;
+    static int scheduledSerial(int blockSerial, int entryIndex) noexcept
+    {
+        return kScheduledSerialBase
+             + blockSerial * kMaxScheduledPerBlock
+             + entryIndex;
+    }
+
     /// Scan all blocks against the current transport time.
     /// Updates hasStarted / isPlaying / hasFinished on each BlockEntry.
     /// Returns Start and Stop events for the AudioEngine to act on.
@@ -35,6 +47,12 @@ public:
     /// block's position changed (so callers can flag the renderer dirty).
     static bool snapBlockPositionsToTime(std::vector<BlockEntry>& blocks,
                                          double timeSec) noexcept;
+
+    /// Snap a single block's visual position to where it would be at transport
+    /// time @p timeSec (same rules as snapBlockPositionsToTime, for one block).
+    /// Returns true if the position changed.  Used by per-block movement freeze
+    /// to re-sync only the block that just un-froze.
+    static bool snapBlockToTime(BlockEntry& b, double timeSec) noexcept;
 
 private:
     std::vector<SequencerEvent> eventBuffer_;

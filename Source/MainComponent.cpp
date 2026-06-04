@@ -43,6 +43,18 @@ MainComponent::MainComponent()
     addChildComponent(view);
     addChildComponent(sidebar);
     addChildComponent(transportBar);
+    addChildComponent(sidebarResizer_);
+
+    sidebarResizer_.onDragStart = [this]
+    {
+        sidebarWidthAtDragStart_ = sidebarWidth_;
+    };
+    sidebarResizer_.onDrag = [this](int deltaX)
+    {
+        sidebarWidth_ = juce::jlimit(kSidebarMinW, kSidebarMaxW,
+                                     sidebarWidthAtDragStart_ + deltaX);
+        resized();
+    };
 
     // ── Wire sidebar collapse ─────────────────────────────────────────────────
     view.setSidebarComponent(&sidebar);
@@ -95,6 +107,7 @@ MainComponent::MainComponent()
     
     transportBar.onPlay = [this]
     {
+        view.setSoloSerial(-1);   // normal play hears everything
         view.transportPlay();
         setPlaybackUiState(true, false, view.getTransportTime());
         transportBar.setTimelinePlaying(true);
@@ -282,6 +295,76 @@ MainComponent::MainComponent()
         markDirty();
     };
 
+    sidebar.onFreezeBlockMovement = [this](int serial, bool frozen)
+    {
+        view.setBlockMovementFrozenForSerial(serial, frozen);
+    };
+
+    sidebar.onSetMovementLoop = [this](int serial, bool loop)
+    {
+        view.setBlockMovementLoop(serial, loop);
+        markDirty();
+    };
+
+    sidebar.onDurationSyncAction = [this](int serial, int action)
+    {
+        auto apply = [this, serial, action]
+        {
+            view.applyDurationSync(serial, static_cast<DurationSyncAction>(action));
+            if (auto block = view.getBlockBySerial(serial))
+                sidebar.showBlockInfo(*block, view.displayNameForSerial(serial));
+            transportBar.setBlocks(view.getBlockListCopy());
+            markDirty();
+        };
+
+        // Only the "distort sound" path changes the audio (pitch/speed); warn
+        // the user first so they can back out.  The other actions are lossless.
+        if (action == static_cast<int>(DurationSyncAction::DistortSoundToMovement))
+        {
+            juce::NativeMessageBox::showOkCancelBox(
+                juce::AlertWindow::WarningIcon,
+                "Audio may be affected",
+                "Fitting the sound to the movement length speeds it up or slows it "
+                "down, which changes its pitch/character.\n\nApply anyway?",
+                nullptr,
+                juce::ModalCallbackFunction::create(
+                    [apply](int result) { if (result == 1) apply(); }));
+        }
+        else
+        {
+            apply();
+        }
+    };
+
+    sidebar.onEditSoundSchedule = [this](int serial, juce::Point<int> screenPos)
+    {
+        auto block = view.getBlockBySerial(serial);
+        if (!block) return;
+
+        if (!soundSchedulePopup_)
+        {
+            soundSchedulePopup_ = std::make_unique<SoundSchedulePopup>();
+            soundSchedulePopup_->onApply =
+                [this](int s, std::vector<SoundEvent> schedule)
+            {
+                view.applySoundSchedule(s, std::move(schedule));
+                if (auto b = view.getBlockBySerial(s))
+                    sidebar.showBlockInfo(*b, view.displayNameForSerial(s));
+                markDirty();
+            };
+            soundSchedulePopup_->onDismiss = [] {};
+        }
+
+        soundSchedulePopup_->setSchedule(
+            serial,
+            view.displayNameForSerial(serial),
+            block->blockType,
+            &view.soundLibrary(),
+            [this](int entryIdx) { return view.ensureLibrarySoundLoaded(entryIdx); },
+            block->soundSchedule);
+        soundSchedulePopup_->showAt(screenPos);
+    };
+
     sidebar.onApplyKeyframes = [this](int serial,
                                       std::vector<MovementKeyFrame> frames)
     {
@@ -359,6 +442,7 @@ MainComponent::MainComponent()
     configureToggleButton(dopplerBtn_);
     configureToggleButton(anchorBtn_);
     configureToggleButton(freeCamBtn_);
+    configureToggleButton(freezeMovBtn_);
 
     addChildComponent(pathEditBtn_);
     pathEditBtn_.setColour(juce::TextButton::buttonColourId,    juce::Colour(0xff252840));
@@ -393,6 +477,11 @@ MainComponent::MainComponent()
     freeCamBtn_.setTooltip("Free Cam ON = user keeps manual control of the camera even when "
                            "a path is loaded.  Free Cam OFF = camera auto-follows the path.");
 
+    freezeMovBtn_  .setToggleState(false, juce::dontSendNotification);
+    freezeMovBtn_.setTooltip("Freeze Move ON = blocks hold their current position even if they "
+                             "have a recorded path.  Turning it OFF resumes motion from the "
+                             "current playhead time (e.g. freeze 0-5s, unfreeze, continue from 5s).");
+
     dopplerBtn_    .onClick = [this] { const bool v = !dopplerBtn_.getToggleState(); view.setDopplerEnabled(v); dopplerBtn_.setToggleState(v, juce::dontSendNotification); };
     anchorBtn_     .onClick = [this]
     {
@@ -406,6 +495,35 @@ MainComponent::MainComponent()
         view.setFreeCameraOverride(v);
         freeCamBtn_.setToggleState(v, juce::dontSendNotification);
     };
+    freezeMovBtn_  .onClick = [this]
+    {
+        const bool v = !freezeMovBtn_.getToggleState();
+        view.setBlockMovementFrozen(v);
+        freezeMovBtn_.setToggleState(v, juce::dontSendNotification);
+    };
+
+    // ── Selected-block audition buttons ──────────────────────────────────────
+    auto styleAuditionBtn = [this](juce::TextButton& b, const juce::String& tip)
+    {
+        addChildComponent(b);
+        b.setColour(juce::TextButton::buttonColourId,  juce::Colour(0xff1e3a2a));
+        b.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffd6f5e0));
+        b.setColour(juce::TextButton::textColourOnId,  juce::Colours::white);
+        b.setTooltip(tip);
+    };
+    styleAuditionBtn(auditionBtn_,
+        "Play Sel: preview the selected block's sound once, spatialised from the "
+        "current camera position (ignores the transport / other blocks).");
+    styleAuditionBtn(auditionInTimeBtn_,
+        "@Time: move the playhead to the selected block's start time (blocks + camera "
+        "snap to that moment).  Does not start playback - press Play yourself.");
+
+    auditionBtn_.onClick = [this]
+    {
+        if (auto block = sidebar.getSelectedBlockCopy())
+            view.auditionBlock(block->serial);
+    };
+    auditionInTimeBtn_.onClick = [this] { playSelectedBlockInTime(); };
 
     // Camera-path always follows when a path is set unless Free Cam is on;
     // recording always overrides following.  See ViewPortComponent.
@@ -546,6 +664,9 @@ void MainComponent::dismissStartupMenu()
     anchorBtn_     .setVisible(true);
     pathEditBtn_   .setVisible(true);
     freeCamBtn_    .setVisible(true);
+    freezeMovBtn_  .setVisible(true);
+    auditionBtn_       .setVisible(true);
+    auditionInTimeBtn_ .setVisible(true);
     helpBtn_       .setVisible(true);
     spatialSensSlider_.setVisible(true);
 
@@ -660,6 +781,28 @@ void MainComponent::timerCallback()
 
     transportBar.setBlocks(view.getBlockListCopy());
     refreshSpatialSidebarReadout();
+
+    // Audition buttons are only meaningful when a block is selected.  The
+    // sidebar's selected block is the source of truth (set by both 3D-scene and
+    // sidebar-list selection), so use it rather than the viewport atomic.
+    const bool hasSel = sidebar.getSelectedBlockCopy().has_value();
+    auditionBtn_.setEnabled(hasSel);
+    auditionInTimeBtn_.setEnabled(hasSel);
+}
+
+void MainComponent::playSelectedBlockInTime()
+{
+    auto block = sidebar.getSelectedBlockCopy();
+    if (!block) return;
+
+    // Just move the playhead to the block's start time — do NOT start playback.
+    // The block (and any moving blocks / camera path) snap to that moment so the
+    // user can see where things are, then press Play themselves if they want.
+    view.setSoloSerial(-1);
+    view.seekTransportClock(block->startTimeSec);
+    setPlaybackUiState(view.isTransportPlaying(),
+                       view.isTransportPaused(),
+                       view.getTransportTime());
 }
 
 void MainComponent::refreshSpatialSidebarReadout()
@@ -1043,8 +1186,21 @@ void MainComponent::resized()
 
     auto area = getLocalBounds();
 
-    const int sidebarWidth = sidebar.isCollapsed() ? 50 : 220;
+    const bool collapsed = sidebar.isCollapsed();
+    const int sidebarWidth = collapsed ? 50 : sidebarWidth_;
     sidebar.setBounds(area.removeFromLeft(sidebarWidth));
+
+    // Drag handle sits flush against the sidebar's right edge (expanded only).
+    sidebarResizer_.setVisible(!collapsed && !showingStartup_);
+    if (!collapsed)
+    {
+        constexpr int kHandleW = 5;
+        sidebarResizer_.setBounds(sidebarWidth - kHandleW + 1,
+                                  sidebar.getY(),
+                                  kHandleW,
+                                  sidebar.getHeight());
+        sidebarResizer_.toFront(false);
+    }
 
     // Transport bar fixed at bottom
     auto transportArea = area.removeFromBottom(transportBar.getPreferredHeight());
@@ -1057,11 +1213,17 @@ void MainComponent::resized()
     int ty = toolbarArea.getY() + (kToolbarH - 26) / 2;
 
     int tx = toolbarArea.getX() + 8;
-    typePill_.setBounds(tx, ty, 160, 26);
-    tx += 160 + gap;
+    typePill_.setBounds(tx, ty, 110, 26);
+    tx += 110 + gap;
 
-    blockTypeCombo.setBounds(tx, ty, 200, 26);
-    tx += 200 + gap;
+    blockTypeCombo.setBounds(tx, ty, 180, 26);
+    tx += 180 + gap;
+
+    // Selected-block audition (grouped with the block-type selector).
+    const int audSelW = 46;
+    const int audTimeW = 58;
+    auditionBtn_      .setBounds(tx, ty, audSelW,  26); tx += audSelW  + gap;
+    auditionInTimeBtn_.setBounds(tx, ty, audTimeW, 26); tx += audTimeW + gap;
 
     // ── Compact toolbar: Layers menu, audio pills, path/free-cam, slider.
     const int toggleW = 64;
@@ -1072,7 +1234,9 @@ void MainComponent::resized()
     anchorBtn_     .setBounds(tx, ty, toggleW, 26); tx += toggleW + gap;
     pathEditBtn_   .setBounds(tx, ty, toggleW, 26); tx += toggleW + gap;
     freeCamBtn_    .setBounds(tx, ty, freeW,   26); tx += freeW   + gap;
-    spatialSensSlider_.setBounds(tx, ty, 110, 26);
+    const int freezeW = 88;
+    freezeMovBtn_  .setBounds(tx, ty, freezeW, 26); tx += freezeW + gap;
+    spatialSensSlider_.setBounds(tx, ty, 90, 26);
 
     const int fbtnW = 72;
     const int helpW = 56;
@@ -1241,6 +1405,7 @@ void MainComponent::setPlaybackUiState(bool playing, bool paused, double current
 void MainComponent::stopPlaybackAndResetUi()
 {
     view.transportStop();
+    view.setSoloSerial(-1);   // clear any "Play @Time" solo
 
     setPlaybackUiState(false, false, 0.0);
 }

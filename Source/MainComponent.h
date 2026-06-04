@@ -3,6 +3,7 @@
 #include "ViewPortComponent.h"
 #include "SidebarComponent.h"
 #include "BlockEditPopup.h"
+#include "SoundSchedulePopup.h"
 #include "TransportBarComponent.h"
 #include "BlockType.h"
 #include "MovementConfirmPopup.h"
@@ -37,9 +38,38 @@ private:
     ViewPortComponent     view;
     SidebarComponent      sidebar;
     BlockEditPopup        editPopup;
+    std::unique_ptr<SoundSchedulePopup> soundSchedulePopup_;
     TransportBarComponent transportBar;
     std::unique_ptr<MovementConfirmPopup> movementPopup;
     bool isSidebarCollapsed = false;
+
+    // ── User-resizable sidebar ────────────────────────────────────────────────
+    int  sidebarWidth_ = 220;               ///< current expanded width (px)
+    static constexpr int kSidebarMinW = 200;
+    static constexpr int kSidebarMaxW = 520;
+
+    /// Thin vertical strip on the sidebar's right edge.  Dragging it resizes the
+    /// sidebar (Cursor-style).  Reports the desired width back to MainComponent.
+    class SidebarResizer : public juce::Component
+    {
+    public:
+        std::function<void(int deltaX)> onDrag;   ///< pixels moved since drag start
+        std::function<void()>           onDragStart;
+        SidebarResizer() { setMouseCursor(juce::MouseCursor::LeftRightResizeCursor); }
+        void mouseDown(const juce::MouseEvent&) override { if (onDragStart) onDragStart(); }
+        void mouseDrag(const juce::MouseEvent& e) override
+        {
+            if (onDrag) onDrag(e.getDistanceFromDragStartX());
+        }
+        void paint(juce::Graphics& g) override
+        {
+            g.fillAll(juce::Colour(0xff202434));
+            g.setColour(juce::Colour(0x40ffffff));
+            const float cx = getWidth() * 0.5f;
+            g.fillRect(cx - 0.5f, getHeight() * 0.5f - 9.f, 1.0f, 18.f);
+        }
+    } sidebarResizer_;
+    int sidebarWidthAtDragStart_ = 220;
 
     // ── Block type toolbar ────────────────────────────────────────────────────
     // Single grouped ComboBox listing all 23 BlockTypes, plus a color "pill"
@@ -73,7 +103,12 @@ private:
     juce::TextButton anchorBtn_      { "Anchor" };
     juce::TextButton pathEditBtn_    { "Path..." };
     juce::TextButton freeCamBtn_     { "Free Cam" };
+    juce::TextButton freezeMovBtn_   { "Freeze Move" };
     juce::TextButton helpBtn_        { "Help" };
+
+    // ── Selected-block audition (enabled only when a block is selected) ───────
+    juce::TextButton auditionBtn_       { "Play" };    ///< one-shot preview of the selected block
+    juce::TextButton auditionInTimeBtn_ { "@Time" };   ///< seek to block start + solo-play in context
     juce::Slider     spatialSensSlider_;
 
     std::unique_ptr<CameraPathPopup> cameraPathPopup_;
@@ -107,6 +142,7 @@ private:
 
     void setPlaybackUiState(bool playing, bool paused, double currentTime);
     void stopPlaybackAndResetUi();
+    void playSelectedBlockInTime();   ///< "Play @Time": seek to block start + solo-play
     void timerCallback() override;
 
     // ── Title bar + dirty tracking ────────────────────────────────────────────

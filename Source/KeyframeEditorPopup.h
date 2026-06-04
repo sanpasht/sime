@@ -80,6 +80,10 @@ private:
     juce::String                   editingName_;
     Vec3i                          anchorPos_;
     std::vector<MovementKeyFrame>  draft_;
+    /// Pristine path captured in setKeyframes().  The interval selector always
+    /// resamples from this so switching intervals (incl. back to "Off") is
+    /// lossless and never compounds rounding.
+    std::vector<MovementKeyFrame>  originalFrames_;
     std::vector<KeyRow>            rows_;
 
     juce::Label      titleLabel_;

@@ -84,6 +84,11 @@ public:
     /// message thread.
     void matchBlockDurationToSound(int serial);
 
+    /// Apply a duration/movement reconciliation action to a block (see
+    /// DurationSyncAction).  Resolves the sample length and pushes a sidebar
+    /// edit with the computed region duration / movement duration / playbackMode.
+    void applyDurationSync(int serial, DurationSyncAction action);
+
     /// Fired when user clicks a block in edit mode.
     /// Args: serial, blockType, start, dur, soundId, customFilePath,
     ///       isLooping, loopDurationSec, viewLocalPos
@@ -262,6 +267,54 @@ public:
     void setFreeCameraOverride(bool freeCam) noexcept { freeCameraOverride_.store(freeCam); }
     bool isFreeCameraOverride() const noexcept { return freeCameraOverride_.load(); }
 
+    /// When true, every block holds its current position during playback even
+    /// if it carries a recorded movement path — the sequencer keeps running,
+    /// so toggling this off resumes motion from the current transport time
+    /// (e.g. freeze 0-5s, unfreeze, block continues from the 5s mark).  Affects
+    /// both the visual position and the spatial-audio source position.
+    void setBlockMovementFrozen(bool frozen) noexcept { blockMovementFrozen_.store(frozen); }
+    bool isBlockMovementFrozen() const noexcept { return blockMovementFrozen_.load(); }
+
+    /// Per-block movement freeze (sidebar "Freeze this block" toggle).  Queued
+    /// to the GL thread, which owns blockList.  Same resume-from-now semantics
+    /// as the global freeze but scoped to one block.
+    void setBlockMovementFrozenForSerial(int serial, bool frozen)
+    {
+        juce::ScopedLock lock(freezeToggleMutex_);
+        pendingFreezeToggles_.push_back({ serial, frozen });
+    }
+
+    /// Toggle a block's movement-loop flag (sidebar "Loop movement").  Queued to
+    /// the GL thread; persisted, so it also marks the scene dirty via the
+    /// onBlockPropertiesChanged callback fired on apply.
+    void setBlockMovementLoop(int serial, bool loop)
+    {
+        juce::ScopedLock lock(freezeToggleMutex_);
+        pendingMovementLoopToggles_.push_back({ serial, loop });
+    }
+
+    // ── Selected-block audition (toolbar "Play Sound" / "Play In Time") ───────
+    /// Currently selected block's serial, or -1 if none.  Safe to poll from the
+    /// message thread (mirrors the GL-thread selection once per frame) for
+    /// enabling toolbar buttons.
+    int  getSelectedSerial() const noexcept { return selectedSerialAtomic_.load(); }
+
+    /// Queue a one-shot preview of a specific block's sound — plays the sample
+    /// once, spatialised from the current camera/listener, ignoring transport.
+    /// Pass the serial explicitly so this works regardless of how the block was
+    /// selected (3D scene click or sidebar list).
+    void auditionBlock(int serial) noexcept
+    {
+        auditionSerial_.store(serial);
+        auditionRequested_.store(true);
+    }
+
+    /// Solo override: when >= 0, every block except this serial is treated as
+    /// muted for the live mix (used by "Play In Time" so only the audited block
+    /// is heard while its movement + the camera path still animate).  -1 = off.
+    void setSoloSerial(int serial) noexcept { soloSerial_.store(serial); }
+    int  getSoloSerial() const noexcept     { return soloSerial_.load(); }
+
     void toggleCameraPathRecording();
     bool isCameraPathRecording() const noexcept { return cameraPathRecording_.load(); }
 
@@ -348,6 +401,13 @@ public:
             maxEnd = std::max(maxEnd, b.endTimeSec());
             for (const auto& t : b.timesList){
                 maxEnd = std::max(maxEnd, t.endTimeSec());
+            }
+            for (const auto& se : b.soundSchedule){
+                maxEnd = std::max(maxEnd, se.endSec());
+            }
+            if (b.hasRecordedMovement && !b.recordedMovement.empty()){
+                maxEnd = std::max(maxEnd,
+                                  b.startTimeSec + b.recordedMovement.back().timeSec);
             }
         }
         return maxEnd;
@@ -443,6 +503,18 @@ public:
 
     /// Public access to the loaded sound index (used by BlockEditPopup).
     SoundLibrary& soundLibrary() noexcept { return library_; }
+
+    /// Register a library entry's WAV and return its runtime soundId (-1 on
+    /// failure).  Used by the Sound Schedule popup to resolve picked sounds.
+    int ensureLibrarySoundLoaded(int entryIdx) { return library_.ensureLoaded(entryIdx, audioEngine); }
+
+    /// Replace a block's scheduled-sound list (Sound Schedule popup Apply).
+    /// Queued to the GL thread which owns blockList.
+    void applySoundSchedule(int serial, std::vector<SoundEvent> schedule)
+    {
+        juce::ScopedLock lock(soundScheduleMutex_);
+        pendingSoundSchedules_.push_back({ serial, std::move(schedule) });
+    }
 
     /// Offline mix of the full timeline to disk (call from the message thread).
     bool exportSceneAudioToFile(const juce::File& outputFile,
@@ -948,6 +1020,30 @@ private:
     /// — the user retains free-fly control.  The path still affects the
     /// audio listener pose during offline export.
     std::atomic<bool> freeCameraOverride_{ false };
+
+    /// Global "freeze block movement" override (toolbar toggle).  Read on the
+    /// GL thread each frame; see setBlockMovementFrozen for semantics.
+    std::atomic<bool> blockMovementFrozen_{ false };
+    /// Pending per-block freeze toggles from the sidebar (serial, frozen).
+    juce::CriticalSection            freezeToggleMutex_;
+    std::vector<std::pair<int,bool>> pendingFreezeToggles_;
+    /// Pending movement-loop toggles (serial, loop); shares freezeToggleMutex_.
+    std::vector<std::pair<int,bool>> pendingMovementLoopToggles_;
+
+    /// Pending sound-schedule replacements from the Sound Schedule popup.
+    juce::CriticalSection                                   soundScheduleMutex_;
+    std::vector<std::pair<int, std::vector<SoundEvent>>>    pendingSoundSchedules_;
+
+    /// Message-thread-readable mirror of selectedSerial (stored once per frame
+    /// by the GL thread).  Drives toolbar button enable state.
+    std::atomic<int>  selectedSerialAtomic_{ -1 };
+    /// Set by the message thread when the user clicks "Play Sound"; consumed on
+    /// the GL thread to fire a one-shot preview voice for the selected block.
+    std::atomic<bool> auditionRequested_{ false };
+    /// Serial to audition (paired with auditionRequested_).
+    std::atomic<int>  auditionSerial_{ -1 };
+    /// Solo serial for "Play In Time" (see setSoloSerial).  -1 = no solo.
+    std::atomic<int>  soloSerial_{ -1 };
 
     std::atomic<bool> distancePickActive_        { false };
     std::atomic<int>  distancePickAnchorSerial_  { -1 };

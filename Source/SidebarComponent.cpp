@@ -12,6 +12,8 @@ SidebarComponent::SidebarComponent()
     addAndMakeVisible(startEditor);
     addAndMakeVisible(durationEditor);
     addAndMakeVisible(movementEnabledToggle);
+    addAndMakeVisible(freezeBlockToggle_);
+    addAndMakeVisible(movementLoopToggle_);
     addAndMakeVisible(modeCombo_);
     addAndMakeVisible(movementDurationEditor_);
     addAndMakeVisible(pathYOffsetEditor_);
@@ -24,6 +26,8 @@ SidebarComponent::SidebarComponent()
     addAndMakeVisible(hideToggle_);
     addAndMakeVisible(muteScheduleBtn_);
     addAndMakeVisible(matchSoundDurBtn_);
+    addAndMakeVisible(durationSyncCombo_);
+    addAndMakeVisible(soundScheduleBtn_);
     addAndMakeVisible(distanceBtn_);
     addAndMakeVisible(applyButton);
     addAndMakeVisible(resetDefaultsBtn_);
@@ -86,6 +90,66 @@ SidebarComponent::SidebarComponent()
     {
         if (selectedBlock_ && onMatchDurationToSound)
             onMatchDurationToSound(selectedBlock_->serial);
+    };
+
+    // Advanced fit dropdown.  Item IDs map to DurationSyncAction values + 1
+    // (ComboBox reserves 0).  Item 100 is the non-selectable header.
+    durationSyncCombo_.setTextWhenNothingSelected("Fit sound / movement...");
+    durationSyncCombo_.setTooltip(
+        "Reconcile sound length vs movement length:\n"
+        " - Distort sound to movement: speed/slow the audio to end with the motion.\n"
+        " - Distort movement to sound: stretch the motion to the sound length (audio kept).\n"
+        " - Hard cut at movement: play audio naturally, cut it when the motion ends.");
+    durationSyncCombo_.addItem("Distort sound -> movement (audio affected)", 2);
+    durationSyncCombo_.addItem("Distort movement -> sound (audio kept)",     3);
+    durationSyncCombo_.addItem("Hard cut at movement end",                   4);
+    durationSyncCombo_.onChange = [this]
+    {
+        const int id = durationSyncCombo_.getSelectedId();
+        durationSyncCombo_.setSelectedId(0, juce::dontSendNotification); // reset to header
+        if (id >= 2 && selectedBlock_ && onDurationSyncAction)
+            onDurationSyncAction(selectedBlock_->serial, id - 1); // -> DurationSyncAction
+    };
+
+    soundScheduleBtn_.setColour(juce::TextButton::buttonColourId, juce::Colour(0xff1e3a2a));
+    soundScheduleBtn_.setColour(juce::TextButton::textColourOffId, juce::Colour(0xffd6f5e0));
+    soundScheduleBtn_.setTooltip(
+        "Schedule extra sounds for this block at specific times (e.g. note A at "
+        "5s, note B at 45s).  Sounds must be of this block's instrument type.");
+    soundScheduleBtn_.onClick = [this]
+    {
+        if (!selectedBlock_ || !onEditSoundSchedule) return;
+        const auto p = soundScheduleBtn_.localPointToGlobal(
+            juce::Point<int>(soundScheduleBtn_.getWidth(),
+                             soundScheduleBtn_.getHeight() / 2));
+        onEditSoundSchedule(selectedBlock_->serial, p);
+    };
+
+    freezeBlockToggle_.setTooltip(
+        "Freeze just this block's movement (hold its current position) even if it "
+        "has a recorded path.  Un-checking resumes motion from the current "
+        "playhead time.  Independent of the global Freeze Move toolbar button.");
+    freezeBlockToggle_.onClick = [this]
+    {
+        if (!selectedBlock_) return;
+        const bool frozen = freezeBlockToggle_.getToggleState();
+        selectedBlock_->movementFrozen = frozen;   // keep the local copy in sync
+        if (onFreezeBlockMovement)
+            onFreezeBlockMovement(selectedBlock_->serial, frozen);
+    };
+
+    movementLoopToggle_.setTooltip(
+        "Loop this block's movement.  Each recorded segment repeats within its own "
+        "window - it teleports back to that segment's start and replays until the "
+        "next segment's time (or the region end for the last one), then the next "
+        "segment plays.  So you can loop segment 1, then have segment 2 play after.");
+    movementLoopToggle_.onClick = [this]
+    {
+        if (!selectedBlock_) return;
+        const bool loop = movementLoopToggle_.getToggleState();
+        selectedBlock_->movementLoop = loop;
+        if (onSetMovementLoop)
+            onSetMovementLoop(selectedBlock_->serial, loop);
     };
 
     distanceBtn_.setColour(juce::TextButton::buttonColourId,
@@ -344,6 +408,8 @@ void SidebarComponent::resized()
         startEditor.setBounds(0, 0, 0, 0);
         durationEditor.setBounds(0, 0, 0, 0);
         movementEnabledToggle.setBounds(0, 0, 0, 0);
+        freezeBlockToggle_.setBounds(0, 0, 0, 0);
+        movementLoopToggle_.setBounds(0, 0, 0, 0);
         keyframesBtn_.setBounds(0, 0, 0, 0);
         modeCombo_.setBounds(0, 0, 0, 0);
         movementDurationEditor_.setBounds(0, 0, 0, 0);
@@ -356,6 +422,8 @@ void SidebarComponent::resized()
         hideToggle_.setBounds(0, 0, 0, 0);
         muteScheduleBtn_.setBounds(0, 0, 0, 0);
         matchSoundDurBtn_.setBounds(0, 0, 0, 0);
+        durationSyncCombo_.setBounds(0, 0, 0, 0);
+        soundScheduleBtn_.setBounds(0, 0, 0, 0);
         distanceBtn_.setBounds(0, 0, 0, 0);
         applyButton.setBounds(0, 0, 0, 0);
         resetDefaultsBtn_.setBounds(0, 0, 0, 0);
@@ -377,6 +445,8 @@ void SidebarComponent::resized()
     startEditor.setBounds(0, 0, 0, 0);
     durationEditor.setBounds(0, 0, 0, 0);
     movementEnabledToggle.setBounds(0, 0, 0, 0);
+    freezeBlockToggle_.setBounds(0, 0, 0, 0);
+    movementLoopToggle_.setBounds(0, 0, 0, 0);
     keyframesBtn_.setBounds(0, 0, 0, 0);
     modeCombo_.setBounds(0, 0, 0, 0);
     movementDurationEditor_.setBounds(0, 0, 0, 0);
@@ -389,6 +459,8 @@ void SidebarComponent::resized()
     hideToggle_.setBounds(0, 0, 0, 0);
     muteScheduleBtn_.setBounds(0, 0, 0, 0);
     matchSoundDurBtn_.setBounds(0, 0, 0, 0);
+    durationSyncCombo_.setBounds(0, 0, 0, 0);
+    soundScheduleBtn_.setBounds(0, 0, 0, 0);
     distanceBtn_.setBounds(0, 0, 0, 0);
     applyButton.setBounds(0, 0, 0, 0);
     resetDefaultsBtn_.setBounds(0, 0, 0, 0);
@@ -500,6 +572,12 @@ void SidebarComponent::resized()
     placeRow(movementEnabledToggle, y, margin, getWidth() - 2 * margin, 28);
     y += 32;
 
+    placeRow(freezeBlockToggle_, y, margin, getWidth() - 2 * margin, 28);
+    y += 32;
+
+    placeRow(movementLoopToggle_, y, margin, getWidth() - 2 * margin, 28);
+    y += 32;
+
     placeRow(keyframesBtn_, y, margin, getWidth() - 2 * margin, editorH);
     y += editorH + rowGap;
 
@@ -550,7 +628,13 @@ void SidebarComponent::resized()
     y += editorH + 12;
 
     placeRow(matchSoundDurBtn_, y, margin, getWidth() - 2 * margin, 28);
-    y += 36;
+    y += 32;
+
+    placeRow(durationSyncCombo_, y, margin, getWidth() - 2 * margin, editorH);
+    y += editorH + rowGap;
+
+    placeRow(soundScheduleBtn_, y, margin, getWidth() - 2 * margin, 28);
+    y += 32;
 
     // Sound header + stats line (paint-only)
     y += 18;                // "Sound" header
@@ -833,6 +917,12 @@ void SidebarComponent::paint(juce::Graphics& g)
         // Movement toggle row label is drawn by the toggle itself.
         y += 32;
 
+        // Per-block "Freeze this block" toggle row (draws its own label).
+        y += 32;
+
+        // "Loop movement" toggle row (draws its own label).
+        y += 32;
+
         // Keyframes button row — no left-hand label (button is full-width).
         y += editorH + rowGap;
 
@@ -872,7 +962,13 @@ void SidebarComponent::paint(juce::Graphics& g)
         y += editorH + 12;
 
         // Match-to-sound button row.
-        y += 36;
+        y += 32;
+
+        // "Fit sound / movement" dropdown row.
+        y += editorH + rowGap;
+
+        // "Sound Schedule..." button row.
+        y += 32;
 
         // (All Y arithmetic below is in scrolled coordinates.)
 
@@ -992,6 +1088,14 @@ void SidebarComponent::showBlockInfo(const BlockEntry& block,
     movementEnabledToggle.setEnabled(hasPath);
     movementEnabledToggle.setToggleState(block.movementEnabled && hasPath,
                                          juce::dontSendNotification);
+
+    freezeBlockToggle_.setEnabled(hasPath);
+    freezeBlockToggle_.setToggleState(block.movementFrozen && hasPath,
+                                      juce::dontSendNotification);
+
+    movementLoopToggle_.setEnabled(hasPath);
+    movementLoopToggle_.setToggleState(block.movementLoop && hasPath,
+                                       juce::dontSendNotification);
 
     modeCombo_.setSelectedId(1 + (int) block.playbackMode,
                              juce::dontSendNotification);
@@ -1130,6 +1234,8 @@ void SidebarComponent::clearSelectedBlock()
     startEditor.setText({}, juce::dontSendNotification);
     durationEditor.setText({}, juce::dontSendNotification);
     movementEnabledToggle.setToggleState(false, juce::dontSendNotification);
+    freezeBlockToggle_.setToggleState(false, juce::dontSendNotification);
+    movementLoopToggle_.setToggleState(false, juce::dontSendNotification);
     modeCombo_.setSelectedId(1 + (int) BlockPlaybackMode::Natural,
                              juce::dontSendNotification);
     movementDurationEditor_.setText({}, juce::dontSendNotification);

@@ -32,6 +32,7 @@ Move a block and the mix changes with **where you are listening from** (the came
 21. [Export audio (detailed report)](md%20files/EXPORT_AUDIO_REPORT.md) — Offline bounce, formats, limitations
 22. [Session 2026-05-23 (detailed report)](md%20files/SESSION_2026-05-23_REPORT.md) — Export, movement, gizmos, audio analysis, Doppler, mute / hide / type filters, loop overhaul, persistence v6→v7→v8
 23. [Testing scenarios](md%20files/TESTING_SCENARIOS.md) — Cross-feature user-story playbook (duration ↔ sound, movement, loop, mute schedule) + UX improvement suggestions
+24. [Session 2026-06-03 (detailed report)](md%20files/SESSION_2026-06-03_REPORT.md) — Selected-block audition, per-block freeze, Fit sound ↔ movement, path resampling, **Sound Schedule** (timed sounds + per-sound loop/gap), **multi-segment movement**, per-segment looping, per-sound movement binding, resizable sidebar, persistence v11→v14
 
 ---
 
@@ -209,7 +210,7 @@ All four views look at the origin (0,0,0) from a distance with a slight downward
 The toolbar at the top of the viewport lays out left-to-right as:
 
 ```
-[Type pill] [Type dropdown]  …  [Layers ▾] [Doppler] [Anchor] [Path…] [Free Cam] [Spatial━━]  [Mute ▾] [View ▾] [File ▾] [Help]
+[Type pill] [Type dropdown] [Play] [@Time]  …  [Layers ▾] [Doppler] [Anchor] [Path…] [Free Cam] [Freeze Move] [Spatial━━]  [Mute ▾] [View ▾] [File ▾] [Help]
 ```
 
 ### Type pill + dropdown (left)
@@ -218,6 +219,8 @@ The toolbar at the top of the viewport lays out left-to-right as:
 |----|----------------|
 | **Color pill** | Shows the active instrument name and a swatch in that type’s color. |
 | **Dropdown** | Picks one of **23 block types** grouped by category (Synth, Strings, Woodwinds, Brass, Percussion, Special). This is what the next `LMB` placement will create. |
+| **Play** | Audition the selected block's sound right now.  Time-aware: previews whichever sound the block would be making at the current playhead (the latest scheduled sound that has started, else the block's main sound).  Enabled only when a block is selected. |
+| **@Time** | Move the playhead to the selected block's start time so blocks + camera snap to that moment.  Does **not** start playback — press Play yourself. |
 
 ### View-element controls (centre-right)
 
@@ -228,6 +231,7 @@ The toolbar at the top of the viewport lays out left-to-right as:
 | **Anchor** | Freeze the **audio** listener at the current camera pose; fly around to compose “from here”; toggle off to snap the view back. |
 | **Path…** | Open the camera-path editor (list of Hold / Lerp keyframes; add static viewpoints or record live segments).  Whenever the path contains at least one keyframe the camera **auto-follows** during playback **and** while scrubbing the timeline (so you get a live preview).  Recording always overrides following. |
 | **Free Cam** | Override the path's hold on the camera while keeping the path data intact.  ON = user keeps full manual control even mid-playback.  OFF = camera follows path.  Useful when you want to scout shots while a path is loaded. |
+| **Freeze Move** | Globally hold **all** blocks in place during playback (paths stay intact; audio keeps playing).  For a single block, use the sidebar's "Freeze this block" toggle instead.  Un-freezing resumes motion from the current playhead — voices are repositioned, not cut. |
 | **Spatial** | Falloff sensitivity (0.25 = gentle … 3.0 = aggressive).  Default 1.0. |
 | **Help** | Show the keyboard / mouse cheat-sheet. |
 
@@ -274,10 +278,11 @@ the fold.  Apply commits everything atomically.
 | **Identity** | Block type label + serial (e.g. `Violin 12`) |
 | **Position** | `X / Y / Z` editors |
 | **Timing** | `Start (s)` and `Duration (s)` editors |
-| **Movement** | `Enable Recorded Movement` toggle; **`Keyframes...`** button that opens the position-keyframe editor (manual `time / x / y / z` rows; alternative to Alt-drag recording, also useful for cleaning up a recorded path); `Mode` combo (Natural / Loop / Stretch / Speed); `Movement Duration` editor (0 = use region duration); `Path Y lift` integer offset |
+| **Movement** | `Enable Recorded Movement` toggle; **`Freeze this block (hold position)`** toggle (per-block freeze, independent of the global Freeze Move); **`Loop movement (teleport to start)`** toggle (loops each recorded **segment** within its own window — see Block Movement Recording); **`Keyframes...`** button that opens the position-keyframe editor (manual `time / x / y / z` rows; alternative to Alt-drag recording; `Snap times` now **resamples** the path so it never teleports); `Mode` combo (Natural / Loop / Stretch / Speed); `Movement Duration` editor (0 = use region duration); `Path Y lift` integer offset |
 | **Loop** | `Loop sound` toggle; `Loop length (s)` editor + `Loop = Block Dur.` button (one-click match); `Loop gap (s)` editor (silence between repeats) |
 | **Mute / Hide** | `Mute (no audio, forever)` toggle; `Hide block in viewport` toggle; **`Mute Schedule...`** button that opens a floating editor where you can add any number of timed mute windows (start + duration, in seconds).  The button label shows the active window count, e.g. `Mute Schedule (3)...`. |
-| **One-click** | `Match Duration to Sound` — sets region duration to the loaded sample's natural length, preserving any recorded movement span |
+| **Duration / sound** | `Match Duration to Sound` — sets region duration to the loaded sample's natural length, preserving any recorded movement span; **`Fit sound / movement…`** dropdown reconciles a sound that's a different length than the movement (distort sound → movement [warns: pitch shifts], distort movement → sound, or hard-cut at the movement end) |
+| **Sound Schedule** | **`Sound Schedule...`** button opens a two-pane editor for playing **multiple timed sounds** from this block (e.g. note A at 5s, note B at 45s).  Each row has start, duration, a **Loop** toggle + **Gap (s)** (repeat that sound across its window), and a sound picker (filtered to the block's instrument type). |
 | **Audio analysis** | Pitch line (Hz / note / duration / period) + filled-blue oscilloscope graph for the loaded sample |
 | **Movement map** | Top-down keyframe path graph (when movement is recorded) |
 | **Buttons** | `Apply` (commit) and `Reset to Default` (clear movement-mode fields) |
@@ -389,11 +394,36 @@ Release the mouse button. The **● REC** indicator disappears and a confirmatio
 - A top-down path visualization (cyan line, green→red keyframe dots, Y-level annotations, START/END labels)
 
 **Step 5 — Confirm or cancel**
-- **Confirm** — movement is saved, duration is locked to match the path timing.
-- **Cancel** — movement is discarded, block resets.
+- **Confirm** — movement is saved.  The block's region is **extended** to cover the motion if needed, but the sound is **never cut**: recording a movement no longer shrinks (or locks) the sound duration.  Set the sound length yourself, or use `Match Duration to Sound` / the `Fit sound / movement…` dropdown.
+- **Cancel** — the in-progress segment is discarded and the block returns to its original position (multi-segment: only the new segment is dropped; earlier segments are kept).
 
 **Step 6 — Play it back**
 Press `Tab` to exit edit mode, then press **Play**. The block will travel through its recorded positions in sync with the transport clock.
+
+### Multi-segment recording (record movement at a later time)
+
+Recording is anchored to the **playhead**, not the block start.  To add a second
+motion after the first:
+
+1. Move the playhead to the time where you want the next motion to begin (the
+   block snaps to its position there).
+2. `Alt + LMB`-drag again to record an **additional** segment starting at that
+   time.
+
+The earlier path is preserved, the new keyframes are spliced in at the playhead,
+and the block **holds** between segments (resuming from its current position — no
+teleport).  Align a segment with a scheduled sound's start time to give that
+sound its own movement.
+
+### Looping movement
+
+Enable **`Loop movement (teleport to start)`** in the sidebar MOVEMENT section.
+Looping is **per segment**: each recorded segment repeats within its own window —
+the block teleports back to that segment's first keyframe and replays until the
+next segment's time (or the region end for the last segment), then the next
+segment plays.  So you can loop segment 1, then have segment 2 play afterward.
+This instant teleport-to-start is the **only** case where a block teleports;
+everywhere else motion steps smoothly along the path.
 
 ### Authoring keyframes by hand (alternative to Alt-drag)
 
@@ -630,7 +660,9 @@ Each block record includes:
 
 ### File Format
 
-The `.sime` format uses a 12-byte header (`SIME` magic, version, block count) followed by tightly packed block records.  The current version is **v9**.  Older files (v5 / v6 / v7 / v8) still load — additive trailing fields fall back to sensible defaults, and v8's single `muteStartSec` / `muteEndSec` pair is auto-migrated into the first entry of `muteWindows`.  Anything written by the current build is **not** readable by older binaries.
+The `.sime` format uses a 12-byte header (`SIME` magic, version, block count) followed by tightly packed block records.  The current version is **v14**.  Older files still load — additive trailing fields fall back to sensible defaults, and v8's single `muteStartSec` / `muteEndSec` pair is auto-migrated into the first entry of `muteWindows`.  Anything written by the current build is **not** readable by older binaries.
+
+Recent additive bumps: **v12** adds each block's **Sound Schedule** (timed sounds, persisted by library-relative path and re-resolved to a runtime sound id on load); **v13** adds the per-block **`movementLoop`** flag; **v14** adds per-scheduled-sound **`loop`** + **`loopGapSec`**.  See [`md files/SESSION_2026-06-03_REPORT.md`](md%20files/SESSION_2026-06-03_REPORT.md) for the field-by-field layout.
 
 ### Auto-Save
 
@@ -746,7 +778,8 @@ SIME/
     ├── TransportBarComponent.cpp/h # Bottom play/pause/stop bar + speed dropdown
     ├── BlockEditPopup.cpp/h       # Floating block edit dialog (timing + sound only; loop UI lives in Info)
     ├── MovementConfirmPopup.h     # Movement recording confirm dialog
-    ├── SceneFile.cpp/h            # Binary .sime scene save/load (v8 — see SESSION_2026-05-23_REPORT.md)
+    ├── SoundSchedulePopup.cpp/h   # Two-pane editor for per-block timed sounds (start/dur/loop/gap + picker)
+    ├── SceneFile.cpp/h            # Binary .sime scene save/load (v14 — see SESSION_2026-06-03_REPORT.md)
     ├── SceneAudioExporter.cpp/h   # Offline timeline bounce + format writers — mirrors live audio engine
     ├── ExportAudioDialog.cpp/h    # Format picker for export
     ├── SoundLibrary.cpp/h         # CSV index + lazy WAV cache (13,759 entries)
